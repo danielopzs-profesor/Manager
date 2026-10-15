@@ -1,1 +1,17 @@
-{"name":"Programación Arte FJ27","short_name":"Arte FJ27","lang":"es","start_url":"/","display":"standalone","background_color":"#f5f6f0","theme_color":"#123c34","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
+{
+  "name": "Programación Arte FJ27",
+  "short_name": "Arte FJ27",
+  "lang": "es",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f6f0",
+  "theme_color": "#123c34",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

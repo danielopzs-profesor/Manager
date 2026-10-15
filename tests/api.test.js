@@ -1,2 +1,114 @@
-import{test}from'node:test';import assert from'node:assert/strict';import{spawn}from'node:child_process';import{mkdtemp,rm}from'node:fs/promises';import os from'node:os';import path from'node:path';
-test('API: sesiones, permisos, confirmación, cambios e importación/exportación',async()=>{const dir=await mkdtemp(path.join(os.tmpdir(),'arte-api-'));const port=31000+Math.floor(Math.random()*10000);const proc=spawn(process.execPath,['server/index.js'],{env:{...process.env,PORT:String(port),EXCEL_PATH:path.join(dir,'api.xlsx'),ADMIN_PASSWORD:'test-password',NODE_ENV:'test'}});let logs='';proc.stderr.on('data',b=>logs+=b);try{await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Arranque agotado '+logs)),15000);proc.stdout.on('data',b=>{if(String(b).includes('disponible')){clearTimeout(timer);resolve()}});proc.on('exit',()=>{clearTimeout(timer);reject(Error(logs))})});const req=async(url,body,cookie)=>{const r=await fetch(`http://localhost:${port}/api${url}`,{method:body?'POST':'GET',headers:{...(body instanceof FormData?{}:{'Content-Type':'application/json'}),...(cookie?{Cookie:cookie}:{})},body:body instanceof FormData?body:body?JSON.stringify(body):undefined});return r};assert.equal((await req('/data')).status,401);const login=await req('/login',{role:'profesor',identifier:'L001'});const cookie=login.headers.get('set-cookie').split(';')[0];const data=await(await req('/data',null,cookie)).json();assert.equal(data.Profesores.length,1);assert.equal((await req('/export',null,cookie)).status,403);assert.equal((await req('/respond',{ids:['C003'],estatus:'Aceptada'},cookie)).status,400);assert.equal((await req('/respond',{ids:['C001'],estatus:'Aceptada'},cookie)).status,200);assert.equal((await req('/respond',{ids:['C002'],estatus:'Cambio Solicitado',comentarios:'Necesito revisar el martes'},cookie)).status,200);const admin=await req('/login',{role:'admin',password:'test-password'});const ac=admin.headers.get('set-cookie').split(';')[0];const all=await(await req('/data',null,ac)).json();assert.equal(all.Clases_Asignadas[0].estatus,'Aceptada');assert.equal(all.Clases_Asignadas[1].comentarios,'Necesito revisar el martes');const exported=await req('/export',null,ac);assert.equal(exported.status,200);const f=new FormData();f.append('file',new Blob([await exported.arrayBuffer()]),'test.xlsx');assert.equal((await req('/import',f,ac)).status,200);const notify=await(await req('/notify/L001',{},ac)).json();assert.equal(notify.mode,'simulación');assert.match(notify.preview,/token=/);await req('/logout',{},cookie);assert.equal((await req('/data',null,cookie)).status,401)}finally{proc.kill();await new Promise(r=>proc.exitCode!==null?r():proc.once('exit',r));await rm(dir,{recursive:true,force:true})}});
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+test("API: sesiones, permisos, confirmación, cambios e importación/exportación", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "arte-api-"));
+  const port = 31000 + Math.floor(Math.random() * 10000);
+  const proc = spawn(process.execPath, ["server/index.js"], {
+    env: {
+      ...process.env,
+      PORT: String(port),
+      EXCEL_PATH: path.join(dir, "api.xlsx"),
+      ADMIN_PASSWORD: "test-password",
+      NODE_ENV: "test",
+    },
+  });
+  let logs = "";
+  proc.stderr.on("data", (b) => (logs += b));
+  try {
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(Error("Arranque agotado " + logs)),
+        15000,
+      );
+      proc.stdout.on("data", (b) => {
+        if (String(b).includes("disponible")) {
+          clearTimeout(timer);
+          resolve();
+        }
+      });
+      proc.on("exit", () => {
+        clearTimeout(timer);
+        reject(Error(logs));
+      });
+    });
+    const req = async (url, body, cookie) => {
+      const r = await fetch(`http://localhost:${port}/api${url}`, {
+        method: body ? "POST" : "GET",
+        headers: {
+          ...(body instanceof FormData
+            ? {}
+            : { "Content-Type": "application/json" }),
+          ...(cookie ? { Cookie: cookie } : {}),
+        },
+        body:
+          body instanceof FormData
+            ? body
+            : body
+              ? JSON.stringify(body)
+              : undefined,
+      });
+      return r;
+    };
+    assert.equal((await req("/data")).status, 401);
+    const login = await req("/login", { role: "profesor", identifier: "L001" });
+    const cookie = login.headers.get("set-cookie").split(";")[0];
+    const data = await (await req("/data", null, cookie)).json();
+    assert.equal(data.Profesores.length, 1);
+    assert.equal((await req("/export", null, cookie)).status, 403);
+    assert.equal(
+      (await req("/respond", { ids: ["C003"], estatus: "Aceptada" }, cookie))
+        .status,
+      400,
+    );
+    assert.equal(
+      (await req("/respond", { ids: ["C001"], estatus: "Aceptada" }, cookie))
+        .status,
+      200,
+    );
+    assert.equal(
+      (
+        await req(
+          "/respond",
+          {
+            ids: ["C002"],
+            estatus: "Cambio Solicitado",
+            comentarios: "Necesito revisar el martes",
+          },
+          cookie,
+        )
+      ).status,
+      200,
+    );
+    const admin = await req("/login", {
+      role: "admin",
+      password: "test-password",
+    });
+    const ac = admin.headers.get("set-cookie").split(";")[0];
+    const all = await (await req("/data", null, ac)).json();
+    assert.equal(all.Clases_Asignadas[0].estatus, "Aceptada");
+    assert.equal(
+      all.Clases_Asignadas[1].comentarios,
+      "Necesito revisar el martes",
+    );
+    const exported = await req("/export", null, ac);
+    assert.equal(exported.status, 200);
+    const f = new FormData();
+    f.append("file", new Blob([await exported.arrayBuffer()]), "test.xlsx");
+    assert.equal((await req("/import", f, ac)).status, 200);
+    const notify = await (await req("/notify/L001", {}, ac)).json();
+    assert.equal(notify.mode, "simulación");
+    assert.match(notify.preview, /token=/);
+    await req("/logout", {}, cookie);
+    assert.equal((await req("/data", null, cookie)).status, 401);
+  } finally {
+    proc.kill();
+    await new Promise((r) =>
+      proc.exitCode !== null ? r() : proc.once("exit", r),
+    );
+    await rm(dir, { recursive: true, force: true });
+  }
+});
