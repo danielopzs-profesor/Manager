@@ -1,114 +1,227 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-test("API: sesiones, permisos, confirmación, cambios e importación/exportación", async () => {
+import { createApp } from "../server/app.js";
+import { fixture } from "./fixtures.js";
+import { Store } from "../server/store.js";
+test("API académica: cuentas individuales, revisiones, publicación, permisos, respuesta e historial", async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "arte-api-"));
-  const port = 31000 + Math.floor(Math.random() * 10000);
-  const proc = spawn(process.execPath, ["server/index.js"], {
+  const file = path.join(dir, "book.xlsx");
+  const store = new Store(file);
+  await store.init();
+  await store.mutate(() => fixture());
+  const runtime = await createApp({
     env: {
-      ...process.env,
-      PORT: String(port),
-      EXCEL_PATH: path.join(dir, "api.xlsx"),
-      ADMIN_PASSWORD: "test-password",
       NODE_ENV: "test",
+      EXCEL_PATH: file,
+      ADMIN_PASSWORD: "test-password",
     },
   });
-  let logs = "";
-  proc.stderr.on("data", (b) => (logs += b));
-  try {
-    await new Promise((resolve, reject) => {
-      const timer = setTimeout(
-        () => reject(Error("Arranque agotado " + logs)),
-        15000,
-      );
-      proc.stdout.on("data", (b) => {
-        if (String(b).includes("disponible")) {
-          clearTimeout(timer);
-          resolve();
-        }
-      });
-      proc.on("exit", () => {
-        clearTimeout(timer);
-        reject(Error(logs));
-      });
+  const server = runtime.app.listen(0);
+  await new Promise((r) => server.once("listening", r));
+  const url = "http://127.0.0.1:" + server.address().port;
+  const request = async (route, body, cookie) =>
+    fetch(url + "/api" + route, {
+      method: body ? "POST" : "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(cookie ? { cookie } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
     });
-    const req = async (url, body, cookie) => {
-      const r = await fetch(`http://localhost:${port}/api${url}`, {
-        method: body ? "POST" : "GET",
-        headers: {
-          ...(body instanceof FormData
-            ? {}
-            : { "Content-Type": "application/json" }),
-          ...(cookie ? { Cookie: cookie } : {}),
-        },
-        body:
-          body instanceof FormData
-            ? body
-            : body
-              ? JSON.stringify(body)
-              : undefined,
-      });
-      return r;
-    };
-    assert.equal((await req("/data")).status, 401);
-    const login = await req("/login", { role: "profesor", identifier: "L001" });
-    const cookie = login.headers.get("set-cookie").split(";")[0];
-    const data = await (await req("/data", null, cookie)).json();
-    assert.equal(data.Profesores.length, 1);
-    assert.equal((await req("/export", null, cookie)).status, 403);
-    assert.equal(
-      (await req("/respond", { ids: ["C003"], estatus: "Aceptada" }, cookie))
-        .status,
-      400,
-    );
-    assert.equal(
-      (await req("/respond", { ids: ["C001"], estatus: "Aceptada" }, cookie))
-        .status,
-      200,
-    );
+  let cookie;
+  try {
+    assert.equal((await request("/academic")).status, 401);
+    const login = await request("/login", {
+      role: "admin",
+      password: "test-password",
+    });
+    cookie = login.headers.get("set-cookie").split(";")[0];
+    let a = await (await request("/academic", null, cookie)).json();
+    assert.equal(a.cargas[0].total, 1.5);
+    const revision = a.revision;
+    let r = await request("/academic/publish", { id: "O1", revision }, cookie);
+    assert.equal(r.status, 200, await r.text());
+    a = await (await request("/academic", null, cookie)).json();
+    assert.equal(a.ofertas[0].estado, "Publicada");
     assert.equal(
       (
-        await req(
-          "/respond",
+        await request(
+          "/academic/save",
           {
-            ids: ["C002"],
-            estatus: "Cambio Solicitado",
-            comentarios: "Necesito revisar el martes",
+            revision,
+            collection: "ufs",
+            item: { id: "UF1", nombre: "Stale", tipo: "Bloque", udc: 2 },
           },
           cookie,
         )
       ).status,
+      409,
+    );
+    assert.equal(
+      (
+        await request(
+          "/academic/respond",
+          { ids: ["R1"], estatus: "Aceptada", revision: a.revision },
+          cookie,
+        )
+      ).status,
+      403,
+    );
+    const teacher = await request("/login", {
+      role: "profesor",
+      identifier: "L001",
+    });
+    const tc = teacher.headers.get("set-cookie").split(";")[0];
+    let t = await (await request("/academic", null, tc)).json();
+    assert.equal(t.profesores.length, 1);
+    assert.equal(t.admins.length, 0);
+    assert.equal(t.participaciones.length, 1);
+    assert.equal(
+      (
+        await request(
+          "/academic/save",
+          { collection: "ufs", item: {}, revision: t.revision },
+          tc,
+        )
+      ).status,
+      403,
+    );
+    assert.equal(
+      (
+        await request(
+          "/academic/respond",
+          { ids: ["R2"], estatus: "Aceptada", revision: t.revision },
+          tc,
+        )
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await request(
+          "/academic/respond",
+          {
+            ids: ["R1"],
+            estatus: "Cambio Solicitado",
+            comentarios: "Mover al martes",
+            revision: t.revision,
+          },
+          tc,
+        )
+      ).status,
       200,
     );
-    const admin = await req("/login", {
-      role: "admin",
-      password: "test-password",
-    });
-    const ac = admin.headers.get("set-cookie").split(";")[0];
-    const all = await (await req("/data", null, ac)).json();
-    assert.equal(all.Clases_Asignadas[0].estatus, "Aceptada");
+    a = await (await request("/academic", null, cookie)).json();
+    assert.equal(a.participaciones[0].comentarios, "Mover al martes");
+    let updated = await request(
+      "/academic/save",
+      {
+        collection: "ofertas",
+        item: { ...a.ofertas[0], udc: 24 },
+        revision: a.revision,
+      },
+      cookie,
+    );
+    assert.equal(updated.status, 200, await updated.text());
+    a = await (await request("/academic", null, cookie)).json();
     assert.equal(
-      all.Clases_Asignadas[1].comentarios,
-      "Necesito revisar el martes",
+      a.cargas.find((c) => c.profesor === "L002").estado,
+      "Sobrecarga pendiente",
     );
-    const exported = await req("/export", null, ac);
-    assert.equal(exported.status, 200);
-    const f = new FormData();
-    f.append("file", new Blob([await exported.arrayBuffer()]), "test.xlsx");
-    assert.equal((await req("/import", f, ac)).status, 200);
-    const notify = await (await req("/notify/L001", {}, ac)).json();
-    assert.equal(notify.mode, "simulación");
-    assert.match(notify.preview, /token=/);
-    await req("/logout", {}, cookie);
-    assert.equal((await req("/data", null, cookie)).status, 401);
+    updated = await request(
+      "/academic/approve",
+      {
+        profesor: "L002",
+        semestre: "FJ27",
+        motivo: "Cobertura semestral autorizada",
+        revision: a.revision,
+      },
+      cookie,
+    );
+    assert.equal(updated.status, 200, await updated.text());
+    a = await (await request("/academic", null, cookie)).json();
+    assert.equal(
+      a.cargas.find((c) => c.profesor === "L002").estado,
+      "Sobrecarga aprobada",
+    );
+    await request(
+      "/academic/save",
+      {
+        collection: "ofertas",
+        item: { ...a.ofertas[0], udc: 26 },
+        revision: a.revision,
+      },
+      cookie,
+    );
+    a = await (await request("/academic", null, cookie)).json();
+    assert.equal(
+      a.cargas.find((c) => c.profesor === "L002").estado,
+      "Sobrecarga pendiente",
+    );
+    r = await request(
+      "/academic/admin",
+      {
+        id: "admin.uno",
+        nombre: "Admin Uno",
+        password: "individual-password-123",
+        revision: a.revision,
+      },
+      cookie,
+    );
+    assert.equal(r.status, 200, await r.text());
+    a = await (await request("/academic", null, cookie)).json();
+    assert.equal(a.admins.length, 1);
+    assert.equal("hash" in a.admins[0], false);
+    assert.equal(
+      (await request("/login", { role: "admin", password: "test-password" }))
+        .status,
+      401,
+    );
+    const personal = await request("/login", {
+      role: "admin",
+      identifier: "admin.uno",
+      password: "individual-password-123",
+    });
+    assert.equal(personal.status, 200);
+    const pc = personal.headers.get("set-cookie").split(";")[0];
+    assert.equal(
+      (
+        await request(
+          "/academic/admin",
+          { id: "admin.uno", remove: true, revision: a.revision },
+          pc,
+        )
+      ).status,
+      400,
+    );
+    assert.equal((await request("/academic/export", null, pc)).status, 200);
+    const backup = await (await request("/academic/backup", null, pc)).text();
+    assert.equal(backup.includes("hash"), false);
+    assert.match(backup, /Respuesta docente/);
+    const snapshots = await (
+      await request("/academic/backups", null, pc)
+    ).json();
+    assert.ok(snapshots.length > 0);
+    const restored = await request(
+      "/academic/restore",
+      { id: snapshots[0].id, revision: a.revision },
+      pc,
+    );
+    assert.equal(restored.status, 200, await restored.text());
+    const afterRestore = await (await request("/academic", null, pc)).json();
+    assert.equal(afterRestore.admins.length, 1);
+    assert.equal(afterRestore.ofertas[0].estado, "Borrador");
+    assert.equal(afterRestore.participaciones[0].estatus, "Pendiente");
+    assert.ok(
+      afterRestore.auditoria.some((x) => x.accion === "Restaurar respaldo"),
+    );
+    await readFile(file + ".pre-v2.xlsx");
   } finally {
-    proc.kill();
-    await new Promise((r) =>
-      proc.exitCode !== null ? r() : proc.once("exit", r),
-    );
+    await new Promise((r) => server.close(r));
+    await runtime.close();
     await rm(dir, { recursive: true, force: true });
   }
 });

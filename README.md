@@ -1,73 +1,110 @@
-# Programación Arte FJ27
+# Arte · Programación académica
 
-**Publicación en Netlify:** sigue [la guía paso a paso](DEPLOY_NETLIFY.md). Incluye Functions, PostgreSQL persistente y acceso mediante enlaces privados; no requiere que tu computadora esté encendida.
+PWA para oferta semestral de unidades de formación, grupos, responsabilidad docente, coordinación y horarios. React + Node.js + PostgreSQL en Netlify/Neon; también funciona localmente con persistencia Excel. Diseño minimalista con #D9304F, #262223, #F2F2F2, #D9D9D9 y #A6A6A6.
 
-PWA responsiva con React, Vite, Express y ExcelJS. Node.js 22.12+ (validada con Node 24). En modo local, el Excel es el almacenamiento del servidor. Con `DATABASE_URL`, se utiliza PostgreSQL persistente y el Excel funciona como formato de importación/exportación; este es el modo obligatorio en Netlify.
+**Actualización del modelo:** consulta [la guía de uso y migración](docs/GUIA_ACADEMICA.md). Para publicar desde cero, sigue [Netlify paso a paso](DEPLOY_NETLIFY.md).
 
-## Ejecutar localmente
+## Ejecutar en tu computadora
+
+Requiere Node 22.12+ (validado con Node 24).
 
 ```bash
-npm ci --cache /workspace/.npm-cache
+npm ci
 npm run dev
 ```
 
-Abre http://localhost:5173. Fuera de este entorno puedes omitir `--cache`. El servidor escucha en 3000. Se genera `data/Programación Arte FJ27.xlsx` con **datos ficticios** solo si no existe. Administrador: contraseña `admin-demo`. Profesores: `L001`, `L002`, `L003` o sus correos de demostración. Estos accesos simplificados son exclusivamente para desarrollo.
+Abre `http://localhost:5173`. Mantén la terminal abierta. Administrador inicial: contraseña `admin-demo`, usuario vacío. Profesores locales ficticios: L001/L002/L003. En producción los profesores necesitan un enlace privado. Al crear la primera cuenta de administrador se deshabilita el acceso compartido inicial, también en local.
+
+```bash
+npm run build
+```
+
+Para servir el build, define `PUBLIC_URL=http://localhost:3000` y ejecuta `npm start`. En Windows CMD:
+
+```bat
+set "PUBLIC_URL=http://localhost:3000"
+npm start
+```
+
+Para cargar `.env`, usa `node --env-file=.env server/index.js`; `npm start` hereda variables del sistema y no carga `.env` por sí mismo. Nunca subas secretos a GitHub.
+
+## Modelo académico
+
+- **UF:** catálogo de materias y bloques con UDC base.
+- **Oferta:** una UF y grupo específicos de un semestre; clave única y número de grupo independientes, ambos texto. La clave no puede repetirse dentro del mismo semestre. No se deducen periodos a partir del código de grupo: 300 puede representar P3 o P1–P2.
+- **Participación:** profesor y porcentaje fijo para toda la duración de una oferta. Debe sumar exactamente 100 % para publicar; borradores pueden estar incompletos, pero nunca superar 100 %. Máximo dos decimales en porcentajes.
+- **Coordinación:** un coordinador por bloque, con UDC adicionales fijadas por el administrador. Puede ser también docente. Las materias no admiten coordinación.
+- **Sesión:** docentes participantes, días, horario, aula y segmentos reales. El porcentaje de responsabilidad no sustituye a la programación de sesiones.
+- **Semestre:** lunes inicial, tres periodos de cinco semanas y dos semanas intermedias; 17 semanas calendario.
+
+Ordinarias: 5 semanas (P1/P2/P3), 10 (P1,P2 o P2,P3), 15 (P1,P2,P3). Intensivas: materias de una semana en I1 o I2, únicamente de lunes a viernes. Las UF/grupos de 15 semanas e intensivas usan códigos capturados por el administrador porque no se especificó una regla institucional para generarlos.
+
+Carga semestral = suma de UDC de cada grupo × responsabilidad/100 + UDC de coordinación. Cada grupo suma una sola vez, aunque abarque varios periodos. Cátedra: 10 UDC; planta: 14. Intensivas y coordinación están incluidas. No existe un tope por periodo; se muestran horas semanales y grupos para ayudar a distribuir actividades.
+
+Sobrecargas requieren aprobación con motivo, administrador y fecha. La aprobación está vinculada a las asignaciones, el tipo de profesor y sus UDC; si cambia esa combinación debe revisarse de nuevo. El sistema muestra una vigencia académica sugerida para cátedra entre su primera y última participación, incluyendo coordinación; no genera ni sustituye contratos laborales.
+
+## Trabajo diario
+
+1. Define fechas del semestre y clasifica profesores como cátedra o planta.
+2. Revisa las UF (materia/bloque) y UDC.
+3. Crea ofertas con clave única, grupo, duración, periodos y UDC del grupo.
+4. Distribuye 100 % entre docentes; asigna coordinación en bloques.
+5. Programa sesiones sin conflictos de profesor o aula.
+6. Revisa y aprueba sobrecargas cuando corresponda.
+7. Publica cada oferta y comparte el enlace privado desde Profesores.
+8. El profesor acepta o solicita cambios. Editar asignaciones/horarios las vuelve a borrador y reinicia las respuestas afectadas; revisa, publica y comparte nuevamente.
+
+## Persistencia y migración
+
+Con `DATABASE_URL`, los datos se guardan en PostgreSQL en `arte_workbook.data` como un documento JSONB validado por el servidor. Las mutaciones usan transacciones con bloqueo de fila y control de revisión; una escritura obsoleta recibe HTTP 409 en vez de sobrescribir otra. El documento conserva el modelo anterior y añade `academic` v2. Esta implementación es apropiada para el volumen actual (27 UF, 76 docentes, 4 administradores); no es una conversión a tablas SQL normalizadas por entidad.
+
+Al arrancar la nueva versión:
+
+- Se preserva una copia previa en `arte_workbook_backup` (o `.pre-v2.xlsx` junto al archivo local).
+- Las asignaciones antiguas se convierten en ofertas **Borrador**, con clave anterior conservada, grupo vacío y profesores **Por clasificar**.
+- Se conserva el horario, las UDC y la respuesta anterior para consulta, pero es obligatorio revisar duración/periodos, tipo de UF y fechas antes de publicar. Los 15 semanas/P1–P3 son una propuesta de migración, no una interpretación comprobada del Excel.
+- La migración es idempotente: nuevos arranques no duplican registros ni reinician la programación ya migrada.
+
+Cada cambio conserva una versión previa; se retienen las últimas 30 en `arte_workbook_history` o `.history.json` local. En Datos puedes restaurarlas preservando las cuentas y el historial actuales; los grupos restaurados quedan en borrador, las respuestas y aprobaciones se reinician. Los respaldos están en el mismo almacenamiento: exporta y conserva copias externas o configura los respaldos del proveedor para recuperación ante pérdida completa.
+
+Sin `DATABASE_URL`, `data/Programación Arte FJ27.xlsx` conserva las tres pestañas anteriores más una pestaña interna oculta con el estado completo. Este archivo local incluye hashes de cuentas y no debe compartirse. Usa la exportación pública desde Datos, que excluye credenciales.
+
+## Importación y exportación
+
+Excel es opcional. Datos → Descargar Excel genera las pestañas `profesores`, `ufs`, `semestres`, `ofertas`, `participaciones`, `coordinaciones`, `sesiones`. Conserva los encabezados y las referencias por ID. Nóminas, claves y grupos son texto. Días `Lun,Mié`; horario `09:00-13:00`; segmentos `P1,P2`.
+
+Importar (máximo 3 MB) reemplaza los datos académicos, conserva cuentas e historial y convierte ofertas/respuestas a borradores/pendientes. Exporta antes un respaldo. La plantilla antigua de tres pestañas no reemplaza esta estructura; los datos ya guardados en el sistema anterior se migran automáticamente. Los JSON exportados no incluyen hashes y sirven como respaldo legible, no como imagen completa de recuperación de PostgreSQL.
+
+## Cuentas, permisos y enlaces
+
+- Crea cuatro cuentas individuales en Administradores. Contraseñas de 12–200 caracteres, almacenadas con scrypt y salt aleatorio.
+- El primer acceso usa `ADMIN_PASSWORD` sin usuario. Tras crear la primera cuenta, ese acceso compartido queda deshabilitado. La sesión creadora pasa a la cuenta nueva.
+- Las cuentas eliminadas o cuyas contraseñas cambiaron no conservan acceso con sesiones anteriores. No puedes eliminar la cuenta actual ni el último administrador.
+- Profesor: identifica nómina/correo y presenta un token privado de un uso, vigente 48 h. Su sesión dura hasta 8 h. Los profesores solo ven ofertas publicadas propias.
+- No se aceptan clases en nombre de un profesor desde una cuenta administrativa.
+- Historial: actor, fecha, operación y campos antes/después; nunca registra contraseñas o hashes de cuentas.
+
+Sin SMTP, `OFFER_DELIVERY=manual` permite compartir ofertas personalmente. Con SMTP configura host, puerto, usuario, contraseña y remitente; STARTTLS obligatorio en puertos distintos de 465. El envío real requiere validación con tu proveedor.
+
+## Publicación
+
+Netlify utiliza `netlify.toml` y `netlify/functions/api.mjs`; conecta GitHub y establece `DATABASE_URL`, `ADMIN_PASSWORD`, `SESSION_SECRET` (mínimo 32 caracteres), `OFFER_DELIVERY=manual`. `PUBLIC_URL` permite un dominio propio HTTPS; si no está definido, se utiliza la URL principal proporcionada por Netlify.
+
+Un push a main puede iniciar un deploy si la publicación automática está habilitada. El código incluye la migración de Neon al iniciar la función; no hace falta borrar la base ni reemplazar secretos. `/api/config` expone la versión pública (`3.0.0`) sin datos privados.
+
+También se incluye Dockerfile para un servidor propio. En producción: HTTPS, `NODE_ENV=production`, secretos fuertes, almacenamiento persistente y `TRUST_PROXY=1` solo detrás de un proxy de confianza. Con PostgreSQL, varias instancias comparten sesiones, límites de acceso y tokens.
+
+## PWA y comprobaciones
+
+El service worker guarda solo recursos estáticos; no cachea API ni datos privados. La aplicación avisa cuando hay una nueva versión. Sin conexión no se permite guardar. Instalación móvil requiere HTTPS o localhost; usa la URL propia de la aplicación, no un iframe de Google Sites.
 
 ```bash
 npm test
 npm run build
-npm start
+npx playwright install chromium
+npm run test:browser
 ```
 
-La compilación se sirve en http://localhost:3000; establece `PUBLIC_URL=http://localhost:3000` para que los formularios funcionen en ese modo. El frontend en desarrollo usa el proxy de Vite. `.env` no se carga automáticamente: usa `node --env-file=.env server/index.js`, o inyecta las variables con tu plataforma. `npm run dev` hereda las variables exportadas en la terminal.
+`npm test`: reglas académicas, migración, Excel y API local. Para ejecutar la integración Netlify/PostgreSQL define `TEST_DATABASE_URL` en una base **aislada**; la prueba sustituye datos de prueba. Sin esa variable, esa prueba se omite explícitamente. `TEST_NETLIFY_BUNDLE` permite ejecutar la misma integración contra el paquete de Functions generado por Netlify.
 
-## Excel integrador
-
-Importa el archivo original desde Administración → Importar, **después de reestructurarlo**. No se ha proporcionado el Excel original; no se presupone su estructura ni se realiza una conversión automática de formatos desconocidos. La importación reemplaza toda la programación; primero exporta un respaldo.
-
-Las columnas deben aparecer en este orden, con estos encabezados exactos:
-
-| Pestaña | Columnas |
-| --- | --- |
-| Profesores | nomina, nombre, correo, udc_maximas |
-| Materias | id_materia, nombre_materia, udc |
-| Clases_Asignadas | id_clase, id_materia, nomina_profesor, dias, horario, aula, estatus, comentarios |
-
-Nóminas e identificadores son texto; conserva ceros iniciales. `udc_maximas` vacío usa 14. Días: `Lun,Mar,Mié,Jue,Vie,Sáb,Dom`, sin espacios. Horario: `09:00-11:00`, con inicio anterior al fin. Estatus: `Pendiente`, `Aceptada`, `Cambio Solicitado`. Se rechazan claves duplicadas, referencias inexistentes, valores de carga inválidos y fórmulas. Importaciones hasta 3 MB. Administra materias en el Excel y vuelve a importarlo; profesores y clases también se crean y editan desde la interfaz.
-
-Cada respuesta y edición actualiza el archivo mediante escritura temporal y reemplazo atómico. Las operaciones de la aplicación se serializan en un único proceso. La interfaz consulta cambios cada 15 segundos. Las ediciones externas se leen en la siguiente consulta; **no edites el archivo externamente mientras hay escrituras en la aplicación**. No se implementa sincronización con OneDrive/SharePoint ni edición colaborativa distribuida.
-
-La carga suma UDC por **clase asignada**, incluso si existen dos grupos de la misma materia. Se compara con el máximo del profesor (14 por defecto). El contador de materias del docente cuenta materias distintas. Las solicitudes se revisan en su panel; el administrador modifica la clase, restablece `Pendiente` y reenvía la oferta para confirmación.
-
-## Correo y acceso
-
-Sin SMTP, el envío muestra una vista previa con resumen y enlace. Con `SMTP_HOST`, configura `SMTP_PORT` (587 STARTTLS o 465 TLS), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`. No guardes secretos en Git. El enlace contiene un token de uso único, vence en 48 horas y exige ingresar la nómina o correo del destinatario. En producción es obligatorio; también puedes usar `OFFER_DELIVERY=manual` para generar un enlace privado desde el administrador y enviarlo personalmente sin SMTP; conocer la nómina por sí sola no permite entrar.
-
-En modo local sin `DATABASE_URL`, las sesiones y tokens se guardan en memoria: un reinicio cierra sesiones e invalida enlaces. Reenvía las ofertas después de reiniciar. Este diseño funciona para una instancia; para múltiples instancias o sesiones duraderas se requiere un almacén compartido y persistente. No se implementan recuperación de contraseña, SSO, auditoría histórica ni detección automática de conflictos.
-
-## Despliegue
-
-1. Instala Node 22.12+ y ejecuta `npm ci && npm run build`.
-2. Monta un volumen persistente para `data/` (o configura `EXCEL_PATH` en un volumen). Mantén una sola instancia Node y respalda el Excel regularmente.
-3. Define `NODE_ENV=production`, `ADMIN_PASSWORD` fuerte, `SESSION_SECRET` aleatorio (al menos 32 bytes), `PUBLIC_URL=https://tu-dominio` y las variables SMTP.
-4. Ejecuta `npm start` detrás de un proxy HTTPS. Si hay exactamente un proxy de confianza, define `TRUST_PROXY=1` para cookies seguras. El proxy debe dirigir todas las rutas al puerto 3000, mantener `Host` y enviar `X-Forwarded-Proto`.
-5. Comprueba login, importación, exportación y envío real con una cuenta de prueba antes de invitar usuarios. No expongas el modo de desarrollo a Internet.
-
-Ejemplo Docker (el volumen debe ser escribible por UID 1000):
-
-```bash
-docker build -t arte-fj27 .
-docker run --env-file .env -p 3000:3000 -v arte-data:/app/data arte-fj27
-```
-
-Pon las variables de producción en `.env` y publica el contenedor detrás de HTTPS. Para Render/Railway u otro host, usa build `npm ci && npm run build`, inicio `npm start` y disco persistente; para funciones serverless utiliza la adaptación Netlify + PostgreSQL descrita en DEPLOY_NETLIFY.md.
-
-## PWA
-
-Manifest e icono SVG incluidos. El service worker se registra en compilaciones de producción y guarda la interfaz estática visitada. Las APIs, sesiones y datos académicos no se cachean. Offline permite abrir la interfaz, pero iniciar sesión, consultar datos y responder requiere red. La instalación requiere HTTPS (localhost es excepción); el soporte depende del navegador. Cuando publiques cambios, cambia la versión de caché en `public/sw.js`.
-
-## Comprobaciones
-
-`npm test` verifica lectura/escritura real del Excel, validaciones, concurrencia y API con sesiones, permisos e importación/exportación. `npm run build` verifica el bundle de producción. SMTP real, instalación en un teléfono y despliegue HTTPS requieren infraestructura externa y deben validarse en el destino.
-
-La integración PostgreSQL/serverless se ejecuta con `TEST_DATABASE_URL` en una base exclusiva de pruebas. Sin esa variable, se omite explícitamente; no apunta a tu base de producción. La configuración Netlify no publica automáticamente el sitio ni crea la base.
+La prueba de navegador usa una base Excel temporal, arranca un servidor en 31879 y verifica administración, publicación, aceptación docente y diseño móvil. Si Chromium ya está instalado, puedes establecer `BROWSER_EXECUTABLE` con su ruta. SMTP, publicación final y datos reales requieren comprobación en el destino.

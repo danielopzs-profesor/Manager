@@ -1,6 +1,8 @@
 import ExcelJS from "exceljs";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { validateAcademic } from "./academic.js";
 export const schema = {
   Profesores: ["nomina", "nombre", "correo", "udc_maximas"],
   Materias: ["id_materia", "nombre_materia", "udc"],
@@ -65,6 +67,7 @@ export function validate(db) {
     )
       throw Error("Usa días Lun,Mar,Mié,Jue,Vie,Sáb,Dom y horario HH:mm-HH:mm");
   }
+  if (db.academic) validateAcademic(db.academic);
   return db;
 }
 export async function decode(buffer) {
@@ -89,6 +92,14 @@ export async function decode(buffer) {
       db[sheet].push(item);
     });
   }
+  const state = book.getWorksheet("_EstadoAcademico");
+  if (state) {
+    const chunks = [];
+    state.eachRow((row, n) => {
+      if (n > 1) chunks.push(row.getCell(1).text);
+    });
+    db.academic = JSON.parse(chunks.join(""));
+  }
   return validate(db);
 }
 export async function encode(db) {
@@ -99,6 +110,13 @@ export async function encode(db) {
     ws.addRows(db[sheet]);
     ws.getRow(1).font = { bold: true };
     ws.views = [{ state: "frozen", ySplit: 1 }];
+  }
+  if (db.academic) {
+    const ws = book.addWorksheet("_EstadoAcademico", { state: "veryHidden" });
+    ws.addRow(["json"]);
+    const json = JSON.stringify(db.academic);
+    for (let i = 0; i < json.length; i += 24000)
+      ws.addRow([json.slice(i, i + 24000)]);
   }
   return book.xlsx.writeBuffer();
 }
@@ -185,7 +203,14 @@ export class Store {
         flag: "wx",
       });
     }
-    await this.read();
+    const db = await this.read();
+    if (!db.academic) {
+      try {
+        await fs.copyFile(this.file, this.file + ".pre-v2.xlsx", 1);
+      } catch (e) {
+        if (e.code !== "EEXIST") throw e;
+      }
+    }
   }
   async read() {
     return decode(await fs.readFile(this.file));
@@ -193,8 +218,31 @@ export class Store {
   mutate(fn) {
     const job = this.queue.then(async () => {
       const db = await this.read();
+      const previous = structuredClone(db);
       const next = (await fn(db)) || db;
       validate(next);
+      let history = [];
+      try {
+        history = JSON.parse(
+          await fs.readFile(this.file + ".history.json", "utf8"),
+        );
+      } catch (e) {
+        if (e.code !== "ENOENT") throw e;
+      }
+      history.unshift({
+        id: randomUUID(),
+        created_at: new Date().toISOString(),
+        revision: previous.academic?.revision || null,
+        data: previous,
+      });
+      await fs.writeFile(
+        this.file + ".history.json.tmp",
+        JSON.stringify(history.slice(0, 30)),
+      );
+      await fs.rename(
+        this.file + ".history.json.tmp",
+        this.file + ".history.json",
+      );
       const tmp = this.file + ".tmp";
       await fs.writeFile(tmp, await encode(next));
       await fs.rename(tmp, this.file);
@@ -202,5 +250,24 @@ export class Store {
     });
     this.queue = job.catch(() => {});
     return job;
+  }
+  async listBackups() {
+    try {
+      const rows = JSON.parse(
+        await fs.readFile(this.file + ".history.json", "utf8"),
+      );
+      return rows.map(({ data, ...r }) => r);
+    } catch (e) {
+      if (e.code === "ENOENT") return [];
+      throw e;
+    }
+  }
+  async getBackup(id) {
+    const rows = JSON.parse(
+      await fs.readFile(this.file + ".history.json", "utf8"),
+    );
+    const row = rows.find((r) => r.id === id);
+    if (!row) throw Error("Respaldo no encontrado");
+    return row.data;
   }
 }

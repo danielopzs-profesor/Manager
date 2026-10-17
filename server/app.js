@@ -9,6 +9,14 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import path from "node:path";
 import { Store, decode, encode } from "./store.js";
 import { createDatabaseRuntime } from "./database.js";
+import { academicRoutes } from "./academic-routes.js";
+import {
+  migrateAcademic,
+  workload,
+  publicAcademic,
+  publishIssues,
+} from "./academic.js";
+import { passwordMatches } from "./accounts.js";
 export async function createApp({
   serverless = false,
   env = process.env,
@@ -38,6 +46,10 @@ export async function createApp({
       path.resolve(env.EXCEL_PATH || "data/Programación Arte FJ27.xlsx"),
     );
   await store.init();
+  if (!(await store.read()).academic)
+    await store.mutate((db) => {
+      migrateAcademic(db);
+    });
   const app = express();
   if (serverless || env.TRUST_PROXY === "1") app.set("trust proxy", 1);
   app.use(helmet({ contentSecurityPolicy: production ? undefined : false }));
@@ -66,14 +78,34 @@ export async function createApp({
       return res.status(403).json({ error: "Origen no permitido" });
     next();
   });
-  const auth = (req, res, next) =>
-    req.session.role
-      ? next()
-      : res.status(401).json({ error: "Inicia sesión" });
-  const admin = (req, res, next) =>
-    req.session.role === "admin"
-      ? next()
-      : res.status(403).json({ error: "Solo administrador" });
+  const auth = (req, res, next) => {
+    if (!req.session.role)
+      return res.status(401).json({ error: "Inicia sesión" });
+    if (req.session.role === "admin") return admin(req, res, next);
+    next();
+  };
+  const admin = async (req, res, next) => {
+    if (req.session.role !== "admin")
+      return res.status(403).json({ error: "Solo administrador" });
+    try {
+      const db = await store.read();
+      const accounts = db.academic?.admins || [];
+      if (
+        accounts.length &&
+        !accounts.some(
+          (a) =>
+            a.id === req.session.adminId && a.hash === req.session.adminVersion,
+        )
+      )
+        return res.status(401).json({
+          error:
+            "Tu acceso cambió. Cierra sesión y vuelve a ingresar con tu cuenta individual.",
+        });
+      next();
+    } catch (e) {
+      next(e);
+    }
+  };
   const equal = (a, b) => {
     const x = Buffer.from(a),
       y = Buffer.from(b);
@@ -107,13 +139,29 @@ export async function createApp({
     }),
     async (req, res) => {
       const { role, identifier = "", password = "", token = "" } = req.body;
-      let nomina;
+      let nomina, adminAccount;
       if (role === "admin") {
-        if (!equal(String(password), env.ADMIN_PASSWORD || "admin-demo"))
+        const db = await store.read();
+        const accounts = db.academic?.admins || [];
+        if (accounts.length) {
+          adminAccount = accounts.find(
+            (a) => a.id === String(identifier).trim().toLowerCase(),
+          );
+          if (
+            !adminAccount ||
+            !(await passwordMatches(password, adminAccount.hash))
+          )
+            return res
+              .status(401)
+              .json({ error: "Usuario o contraseña incorrectos" });
+        } else if (!equal(String(password), env.ADMIN_PASSWORD || "admin-demo"))
           return res.status(401).json({ error: "Contraseña incorrecta" });
       } else {
         const db = await store.read();
-        const p = db.Profesores.find(
+        const people = db.academic
+          ? db.academic.profesores.map((p) => ({ ...p, nomina: p.id }))
+          : db.Profesores;
+        const p = people.find(
           (p) =>
             p.nomina === identifier ||
             p.correo.toLowerCase() === String(identifier).toLowerCase(),
@@ -134,7 +182,15 @@ export async function createApp({
       );
       req.session.role = role === "admin" ? "admin" : "profesor";
       req.session.nomina = nomina;
-      res.json({ role: req.session.role, nomina });
+      if (adminAccount) {
+        req.session.adminId = adminAccount.id;
+        req.session.adminVersion = adminAccount.hash;
+      }
+      res.json({
+        role: req.session.role,
+        nomina,
+        adminId: req.session.adminId,
+      });
     },
   );
   app.post("/api/logout", auth, (req, res) =>
@@ -144,116 +200,77 @@ export async function createApp({
     }),
   );
   app.get("/api/me", (req, res) =>
-    res.json({ role: req.session.role || null, nomina: req.session.nomina }),
+    res.json({
+      role: req.session.role || null,
+      nomina: req.session.nomina,
+      adminId: req.session.adminId,
+    }),
   );
-  app.get("/api/data", auth, async (req, res) => {
-    const db = await store.read();
-    if (req.session.role !== "admin") {
-      db.Profesores = db.Profesores.filter(
-        (p) => p.nomina === req.session.nomina,
-      );
-      db.Clases_Asignadas = db.Clases_Asignadas.filter(
-        (c) => c.nomina_profesor === req.session.nomina,
-      );
-      const ids = new Set(db.Clases_Asignadas.map((c) => c.id_materia));
-      db.Materias = db.Materias.filter((m) => ids.has(m.id_materia));
-    }
-    res.json(db);
-  });
-  app.post("/api/respond", auth, async (req, res) => {
-    const { ids, estatus, comentarios = "" } = req.body;
-    if (
-      !Array.isArray(ids) ||
-      !ids.length ||
-      !["Aceptada", "Cambio Solicitado"].includes(estatus) ||
-      typeof comentarios !== "string" ||
-      comentarios.length > 2000 ||
-      (estatus === "Cambio Solicitado" && !comentarios.trim())
-    )
-      return res.status(400).json({
-        error:
-          "Selecciona clases y escribe tus observaciones (máximo 2000 caracteres)",
-      });
-    await store.mutate((db) => {
-      const classes = ids.map((id) =>
-        db.Clases_Asignadas.find((c) => c.id_clase === id),
-      );
-      if (
-        classes.some(
-          (c) =>
-            !c ||
-            (req.session.role !== "admin" &&
-              c.nomina_profesor !== req.session.nomina),
-        )
-      )
-        throw Error("Clase no autorizada");
-      classes.forEach((c) =>
-        Object.assign(c, {
-          estatus,
-          comentarios: estatus === "Aceptada" ? "" : comentarios.trim(),
-        }),
-      );
-    });
-    res.json({ ok: true });
-  });
-  app.post("/api/classes", auth, admin, async (req, res) => {
-    await store.mutate((db) => {
-      const c = req.body;
-      const old = db.Clases_Asignadas.find((x) => x.id_clase === c.id_clase);
-      if (old) Object.assign(old, c);
-      else db.Clases_Asignadas.push(c);
-    });
-    res.json({ ok: true });
-  });
-  app.post("/api/professors", auth, admin, async (req, res) => {
-    await store.mutate((db) => {
-      const p = req.body;
-      const old = db.Profesores.find((x) => x.nomina === p.nomina);
-      if (old) Object.assign(old, p);
-      else db.Profesores.push(p);
-    });
-    res.json({ ok: true });
-  });
+  app.get("/api/config", (req, res) =>
+    res.json({ production, version: "3.0.0", schema: 2 }),
+  );
+  academicRoutes(app, { store, auth, admin });
+  app.use(
+    ["/api/respond", "/api/classes", "/api/professors", "/api/import"],
+    (req, res, next) =>
+      req.method === "POST"
+        ? res.status(409).json({
+            error: "Actualiza la página para utilizar el modelo académico v2.",
+          })
+        : next(),
+  );
+  app.get("/api/data", auth, (req, res) => res.redirect(307, "/api/academic"));
   app.get("/api/export", auth, admin, async (req, res) => {
-    const buffer = await encode(await store.read());
-    res.attachment("Programación Arte FJ27.xlsx");
-    res.send(Buffer.from(buffer));
+    res.redirect(307, "/api/academic/export");
   });
-  app.post(
-    "/api/import",
-    auth,
-    admin,
-    multer({
-      storage: multer.memoryStorage(),
-      limits: { fileSize: 3 * 1024 * 1024 },
-    }).single("file"),
-    async (req, res) => {
-      if (!req.file)
-        return res.status(400).json({ error: "Selecciona un Excel" });
-      const db = await decode(req.file.buffer);
-      await store.mutate(() => db);
-      res.json({ ok: true });
-    },
-  );
   app.post("/api/notify/:nomina", auth, admin, async (req, res) => {
     const db = await store.read();
-    const p = db.Profesores.find((p) => p.nomina === req.params.nomina);
+    const a = migrateAcademic(db);
+    const p = a.profesores.find((p) => p.id === req.params.nomina);
     if (!p) return res.status(404).json({ error: "Profesor no encontrado" });
+    const selectedSemester = String(
+      req.body.semestre || a.semestres[0]?.id || "",
+    );
+    if (!a.semestres.some((s) => s.id === selectedSemester))
+      return res.status(400).json({ error: "Semestre no encontrado" });
+    const ps = a.participaciones.filter(
+      (x) =>
+        x.profesor === p.id &&
+        a.ofertas.find((o) => o.id === x.oferta)?.estado === "Publicada" &&
+        a.ofertas.find((o) => o.id === x.oferta)?.semestre === selectedSemester,
+    );
+    const coords = a.coordinaciones.filter(
+      (x) =>
+        x.profesor === p.id &&
+        a.ofertas.find((o) => o.id === x.oferta)?.estado === "Publicada" &&
+        a.ofertas.find((o) => o.id === x.oferta)?.semestre === selectedSemester,
+    );
+    if (!ps.length && !coords.length)
+      return res.status(400).json({
+        error:
+          "Primero completa y publica al menos una oferta para este profesor.",
+      });
     const token = randomBytes(32).toString("hex");
     const url = new URL(publicUrl);
-    url.searchParams.set("nomina", p.nomina);
+    url.searchParams.set("nomina", p.id);
     url.searchParams.set("token", token);
     const text =
-      `Hola ${p.nombre},\nTu oferta académica FJ27:\n` +
-      db.Clases_Asignadas.filter((c) => c.nomina_profesor === p.nomina)
+      `Hola ${p.nombre},\nTu oferta académica:\n` +
+      ps
+        .map((x) => {
+          const o = a.ofertas.find((o) => o.id === x.oferta);
+          return `${a.ufs.find((u) => u.id === o.uf).nombre} · Grupo ${o.grupo} · Clave ${o.clave} · ${o.semestre} · ${o.periodos} · ${x.porcentaje}% · ${(o.udc * x.porcentaje) / 100} UDC`;
+        })
+        .join("\n") +
+      coords
         .map(
           (c) =>
-            `${db.Materias.find((m) => m.id_materia === c.id_materia).nombre_materia}: ${c.dias} ${c.horario}, ${c.aula}`,
+            `\nCoordinación ${a.ofertas.find((o) => o.id === c.oferta)?.clave}: ${c.udc} UDC`,
         )
-        .join("\n") +
+        .join("") +
       `\nResponde aquí (vigencia 48 h): ${url}`;
     await offers.put(token, {
-      nomina: p.nomina,
+      nomina: p.id,
       expires: Date.now() + 48 * 3600000,
     });
     if (env.SMTP_HOST) {
@@ -294,7 +311,13 @@ export async function createApp({
   }
   app.use((err, req, res, next) => {
     console.error(err.message);
-    res.status(400).json({ error: err.message || "Error de solicitud" });
+    const databaseError =
+      typeof err.code === "string" && /^[0-9A-Z]{5}$/.test(err.code);
+    res.status(databaseError ? 503 : err.status || 400).json({
+      error: databaseError
+        ? "La base de datos no pudo completar la operación. Reintenta o contacta al administrador."
+        : err.message || "Error de solicitud",
+    });
   });
   return {
     app,

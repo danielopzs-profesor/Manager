@@ -1,17 +1,29 @@
 {
-  "name": "Programación Arte FJ27",
-  "short_name": "Arte FJ27",
+  "name": "Arte · Programación académica",
+  "short_name": "Arte",
   "lang": "es",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5f6f0",
-  "theme_color": "#123c34",
+  "background_color": "#f2f2f2",
+  "theme_color": "#262223",
   "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

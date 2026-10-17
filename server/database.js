@@ -38,6 +38,15 @@ export class DatabaseStore {
         "INSERT INTO arte_workbook(id,data) VALUES (1,$1) ON CONFLICT (id) DO NOTHING",
         [JSON.stringify(demo)],
       );
+      await client.query(
+        "CREATE TABLE IF NOT EXISTS arte_workbook_history (id bigserial PRIMARY KEY, data jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT NOW())",
+      );
+      await client.query(
+        "CREATE TABLE IF NOT EXISTS arte_workbook_backup (version integer PRIMARY KEY, data jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT NOW())",
+      );
+      await client.query(
+        "INSERT INTO arte_workbook_backup(version,data) SELECT 1,data FROM arte_workbook WHERE id=1 AND NOT (data ? 'academic') ON CONFLICT(version) DO NOTHING",
+      );
     });
   }
   async read() {
@@ -52,12 +61,33 @@ export class DatabaseStore {
         "SELECT data FROM arte_workbook WHERE id=1 FOR UPDATE",
       );
       const db = rows[0].data;
+      const previous = JSON.stringify(db);
       const next = validate((await fn(db)) || db);
+      await client.query("INSERT INTO arte_workbook_history(data) VALUES($1)", [
+        previous,
+      ]);
+      await client.query(
+        "DELETE FROM arte_workbook_history WHERE id NOT IN (SELECT id FROM arte_workbook_history ORDER BY id DESC LIMIT 30)",
+      );
       await client.query("UPDATE arte_workbook SET data=$1 WHERE id=1", [
         JSON.stringify(next),
       ]);
       return next;
     });
+  }
+  async listBackups() {
+    const { rows } = await this.pool.query(
+      "SELECT id,created_at,data->'academic'->>'revision' AS revision FROM arte_workbook_history ORDER BY id DESC",
+    );
+    return rows;
+  }
+  async getBackup(id) {
+    const { rows } = await this.pool.query(
+      "SELECT data FROM arte_workbook_history WHERE id=$1",
+      [id],
+    );
+    if (!rows[0]) throw Error("Respaldo no encontrado");
+    return rows[0].data;
   }
 }
 export async function createDatabaseRuntime(connectionString) {

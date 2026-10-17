@@ -29,12 +29,12 @@ Antes de publicar, busca **Environment variables**. Si ese formulario no las mue
 
 Agrega una variable por fila. En los secretos selecciona **Contains secret values** cuando exista esa opción. Deben estar disponibles para **Functions / Runtime**, no solo para Builds.
 
-| Nombre | Valor que debes introducir |
-| --- | --- |
-| `DATABASE_URL` | La dirección privada copiada de Neon. |
-| `ADMIN_PASSWORD` | Una contraseña nueva, larga y exclusiva para el administrador. No uses `admin-demo`. |
+| Nombre           | Valor que debes introducir                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`   | La dirección privada copiada de Neon.                                                                                                |
+| `ADMIN_PASSWORD` | Una contraseña nueva, larga y exclusiva para el administrador. No uses `admin-demo`.                                                 |
 | `SESSION_SECRET` | Un valor aleatorio de al menos 32 caracteres, generado con tu gestor de contraseñas. Es diferente de la contraseña de administrador. |
-| `OFFER_DELIVERY` | `manual` |
+| `OFFER_DELIVERY` | `manual`                                                                                                                             |
 
 No definas `NODE_ENV=development` ni variables que comiencen con `VITE_` para guardar contraseñas. Las funciones activan las protecciones de producción automáticamente. `PUBLIC_URL` es opcional al usar el dominio principal de Netlify: la aplicación toma su variable automática `URL`.
 
@@ -57,7 +57,7 @@ Si configuras un dominio propio, agrega `PUBLIC_URL=https://tu-dominio` y vuelve
 ## 5. Cargar tu programación
 
 1. Primero aparecerán datos ficticios para que compruebes el funcionamiento.
-2. Pulsa **↓ Excel** para descargar una plantilla con las tres pestañas.
+2. Pulsa **↓ Excel** para descargar una plantilla con las siete pestañas académicas.
 3. Prepara tu archivo respetando el formato descrito en README.md.
 4. Pulsa **↑ Importar**, elige el archivo y confirma. El máximo es **3 MB**. Esta operación reemplaza toda la programación; exporta un respaldo antes.
 5. Comprueba los profesores y horarios.
@@ -95,3 +95,9 @@ Para Google Sites, agrega un botón o enlace a la aplicación publicada. Abre el
 Se usan transacciones PostgreSQL y bloqueo de la fila de programación para evitar pérdidas de cambios entre funciones concurrentes. Las tablas son `arte_workbook`, `arte_session`, `arte_offer` y `arte_login_limit`. Los tokens se almacenan como hashes SHA-256 y se consumen atómicamente. Los límites de login se comparten entre instancias. No uses la misma base para varios proyectos independientes. Conserva exportaciones y configura los respaldos de Neon según el plan contratado.
 
 `npm test` valida el modo local. Para incluir la integración serverless con PostgreSQL real, define `TEST_DATABASE_URL` apuntando a una base **aislada de pruebas**, y ejecuta `npm test`. La prueba sobrescribe la programación de esa base. Nunca uses datos reales para esa variable.
+
+## Actualizar desde la versión anterior
+
+Consulta [GUIA_ACADEMICA.md](docs/GUIA_ACADEMICA.md). Mantén DATABASE_URL y SESSION_SECRET actuales. No borres ni recrees Neon. La nueva función guarda copia previa y migra automáticamente. Después, clasifica los docentes, revisa las UF/grupos/periodos y crea las cuentas individuales. La contraseña inicial deja de servir cuando existe la primera cuenta individual; se solicitará usuario y contraseña. Los registros migrados son borradores, no ofertas listas para enviar.
+
+Comprueba que `/api/config` devuelva `version: "3.0.0"` después de que Netlify publique main. Si GitHub no dispara un deploy automáticamente, usa Deploys → Trigger deploy.
