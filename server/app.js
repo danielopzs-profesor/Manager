@@ -1,7 +1,8 @@
 import express from "express";
 import session from "express-session";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+import { isIP } from "node:net";
 import multer from "multer";
 import nodemailer from "nodemailer";
 import { randomBytes, timingSafeEqual } from "node:crypto";
@@ -96,6 +97,8 @@ export async function createApp({
     rateLimit({
       windowMs: 60000,
       limit: 15,
+      keyGenerator: (req) =>
+        ipKeyGenerator(isIP(req.ip || "") ? req.ip : "unknown-client"),
       store: runtime?.limiter,
       message: {
         error:

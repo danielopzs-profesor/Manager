@@ -1,7 +1,9 @@
 import serverless from "serverless-http";
+import { normalizeClientAddress } from "../../server/client-address.js";
 import { createApp } from "../../server/app.js";
 let ready;
 export async function handler(event, context) {
+  normalizeClientAddress(event);
   // Netlify termina TLS antes de invocar la función; no confiar en cabeceras del visitante.
   event.headers = { ...event.headers, "x-forwarded-proto": "https" };
   if (event.multiValueHeaders)

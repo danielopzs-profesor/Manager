@@ -94,6 +94,27 @@ test(
         password: "test-password",
       });
       assert.equal(login.statusCode, 200, login.body);
+      for (const headers of [
+        { "x-nf-client-connection-ip": "192.0.2.33" },
+        {},
+      ]) {
+        const netlifyLogin = await worker2.handler(
+          {
+            path: "/.netlify/functions/api/api/login",
+            httpMethod: "POST",
+            headers: {
+              ...headers,
+              host: "arte.example.test",
+              origin: "https://arte.example.test",
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({ role: "admin", password: "test-password" }),
+            isBase64Encoded: false,
+          },
+          {},
+        );
+        assert.equal(netlifyLogin.statusCode, 200, netlifyLogin.body);
+      }
       const cookies = login.multiValueHeaders?.["set-cookie"] || [
         login.headers?.["set-cookie"],
       ];
