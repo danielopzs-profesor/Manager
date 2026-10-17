@@ -1,6 +1,6 @@
-# Arte · Programación académica
+# Coordinación Académica
 
-PWA para oferta semestral de unidades de formación, grupos, responsabilidad docente, coordinación y horarios. React + Node.js + PostgreSQL en Netlify/Neon; también funciona localmente con persistencia Excel. Diseño minimalista con #D9304F, #262223, #F2F2F2, #D9D9D9 y #A6A6A6.
+PWA para oferta semestral de unidades de formación, grupos, responsabilidad docente, coordinación y horarios. React + Node.js + PostgreSQL en Netlify/Neon; también funciona localmente con persistencia Excel. Identidad visual azul y cian, superficies translúcidas y tipografías Manrope/Sora locales, adaptadas del archivo de referencia `ui`.
 
 **Actualización del modelo:** consulta [la guía de uso y migración](docs/GUIA_ACADEMICA.md). Para publicar desde cero, sigue [Netlify paso a paso](DEPLOY_NETLIFY.md).
 
@@ -90,7 +90,7 @@ Sin SMTP, `OFFER_DELIVERY=manual` permite compartir ofertas personalmente. Con S
 
 Netlify utiliza `netlify.toml` y `netlify/functions/api.mjs`; conecta GitHub y establece `DATABASE_URL`, `ADMIN_PASSWORD`, `SESSION_SECRET` (mínimo 32 caracteres), `OFFER_DELIVERY=manual`. `PUBLIC_URL` permite un dominio propio HTTPS; si no está definido, se utiliza la URL principal proporcionada por Netlify.
 
-Un push a main puede iniciar un deploy si la publicación automática está habilitada. El código incluye la migración de Neon al iniciar la función; no hace falta borrar la base ni reemplazar secretos. `/api/config` expone la versión pública (`3.1.0`) sin datos privados.
+Un push a main puede iniciar un deploy si la publicación automática está habilitada. El código incluye la migración de Neon al iniciar la función; no hace falta borrar la base ni reemplazar secretos. `/api/config` expone la versión pública (`3.2.0`) sin datos privados.
 
 También se incluye Dockerfile para un servidor propio. En producción: HTTPS, `NODE_ENV=production`, secretos fuertes, almacenamiento persistente y `TRUST_PROXY=1` solo detrás de un proxy de confianza. Con PostgreSQL, varias instancias comparten sesiones, límites de acceso y tokens.
 

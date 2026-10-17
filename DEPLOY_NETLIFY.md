@@ -100,4 +100,4 @@ Se usan transacciones PostgreSQL y bloqueo de la fila de programación para evit
 
 Consulta [GUIA_ACADEMICA.md](docs/GUIA_ACADEMICA.md). Mantén DATABASE_URL y SESSION_SECRET actuales. No borres ni recrees Neon. La nueva función guarda copia previa y migra automáticamente. Después, clasifica los docentes, revisa las UF/grupos/periodos y crea las cuentas individuales. La contraseña inicial deja de servir cuando existe la primera cuenta individual; se solicitará usuario y contraseña. Los registros migrados son borradores, no ofertas listas para enviar.
 
-Comprueba que `/api/config` devuelva `version: "3.1.0"` después de que Netlify publique main. Si GitHub no dispara un deploy automáticamente, usa Deploys → Trigger deploy.
+Comprueba que `/api/config` devuelva `version: "3.2.0"` después de que Netlify publique main. Si GitHub no dispara un deploy automáticamente, usa Deploys → Trigger deploy.

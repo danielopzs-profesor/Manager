@@ -1,11 +1,11 @@
 {
-  "name": "Arte · Programación académica",
-  "short_name": "Arte",
+  "name": "Coordinación Académica",
+  "short_name": "Coordinación",
   "lang": "es",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f2f2f2",
-  "theme_color": "#262223",
+  "background_color": "#f4f7fc",
+  "theme_color": "#08162f",
   "icons": [
     {
       "src": "/icon-192.png",

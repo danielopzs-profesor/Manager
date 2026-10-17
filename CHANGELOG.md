@@ -1,3 +1,10 @@
+# 3.2.0 — Identidad visual Coordinación Académica
+
+- Adaptación de la referencia visual ui: azules, cian, superficies translúcidas, tarjetas de métricas y barra lateral oscura.
+- Pantalla de ingreso con tres perfiles y composición del semestre; navegación inferior adaptable en móvil.
+- Manrope y Sora alojadas con la aplicación, sin peticiones a Google Fonts.
+- Identidad, iconos instalables y colores PWA actualizados; funciones y permisos existentes conservados.
+
 # 3.1.0 — Rol de consulta
 
 - Cuentas Consulta con acceso de lectura a UF, ofertas, profesores, carga y horarios.

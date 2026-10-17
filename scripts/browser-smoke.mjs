@@ -34,6 +34,14 @@ try {
   const failures = [];
   page.on("pageerror", (e) => failures.push(e.message));
   await page.goto("http://localhost:31879");
+  await mkdir('/tmp/arte-screens',{recursive:true});
+  await page.getByRole('heading',{name:'Ingresa a tu espacio'}).waitFor();
+  await page.screenshot({path:'/tmp/arte-screens/login-desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Login móvil desbordado');
+  await page.screenshot({path:'/tmp/arte-screens/login-mobile.png',fullPage:true});
+  await page.setViewportSize({width:1440,height:1050});
+
   await page
     .getByRole("button", { name: "Administrador", exact: true })
     .click();

@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import "@fontsource-variable/manrope";
+import "@fontsource-variable/sora";
 import "./style.css";
+import "./theme.css";
+import { Brand, Icon, SemesterIllustration, navIcons } from "./visual.jsx";
 const segments = ["P1", "I1", "P2", "I2", "P3"];
 const labels = {
   P1: "Periodo 1",
@@ -59,7 +63,22 @@ function Badge({ value }) {
 function Stat({ label, value, sub }) {
   return (
     <article className="stat">
-      <span>{label}</span>
+      <div className="stat-head">
+        <span>{label}</span>
+        <span className="stat-icon">
+          <Icon
+            name={
+              label.includes("Profesor")
+                ? "users"
+                : label.includes("carga")
+                  ? "shield"
+                  : label.includes("aceptad")
+                    ? "check"
+                    : "calendar"
+            }
+          />
+        </span>
+      </div>
       <strong>{value}</strong>
       <small>{sub}</small>
     </article>
@@ -710,13 +729,28 @@ function App() {
   }
   return (
     <>
-      <header>
-        <a href="/" className="brand">
-          <span>A</span>
-          <div>
-            ARTE <b>/ PROGRAMACIÓN ACADÉMICA</b>
+      <header
+        className={
+          me?.role
+            ? "site-header site-header--app"
+            : "site-header site-header--login"
+        }
+      >
+        <Brand />
+        {me?.role && (
+          <div className="header-context">
+            <span className="eyebrow">COORDINACIÓN ACADÉMICA</span>
+            <span className="header-identity">
+              <Icon name="user" size={16} />
+              {me.adminId || me.nomina || "Configuración inicial"}
+            </span>
           </div>
-        </a>
+        )}
+        {!me?.role && (
+          <span className="status-pill">
+            <i /> Portal académico
+          </span>
+        )}
         {me?.role && (
           <button
             className="header-button"
@@ -741,112 +775,124 @@ function App() {
       {!me?.role ? (
         <main className="login-page">
           <div className="login-intro">
-            <span className="eyebrow">ARTE · DOCENCIA · ENCUENTRO</span>
+            <span className="eyebrow">
+              <Icon name="spark" size={16} /> DOCENCIA · ORGANIZACIÓN ·
+              ENCUENTRO
+            </span>
             <h1>
-              Un espacio para
+              Tu semestre,
               <br />
-              el próximo semestre.
+              <em>en orden.</em>
             </h1>
             <p>
-              Unidades de formación, talento y horarios.
-              <br />
-              Toda tu programación, en un solo lugar.
+              Consulta materias, horarios y espacios asignados. Todo lo que
+              necesitas para enseñar y coordinar, en un solo lugar.
             </p>
-            <div className="graphic">
-              <span>
-                FJ
-                <br />
-                27
-              </span>
-              <i>CREAR. CONECTAR. ENSEÑAR.</i>
-            </div>
+            <SemesterIllustration />
           </div>
-          <form className="login-card" onSubmit={login}>
-            <span className="eyebrow">BIENVENIDO</span>
-            <h2>Tu espacio académico</h2>
-            <div className="tabs">
-              {["profesor", "admin", "consulta"].map((r) => (
-                <button
-                  type="button"
-                  key={r}
-                  className={role === r ? "active" : ""}
-                  onClick={() => setRole(r)}
-                >
-                  {r === "admin"
-                    ? "Administrador"
-                    : r === "consulta"
-                      ? "Consulta"
-                      : "Profesor"}
-                </button>
-              ))}
+          <div className="login-panel-wrap">
+            <div className="orbit-card orbit-card--top">
+              <Icon name="calendar" size={16} /> Periodos e intensivas
             </div>
-            <label>
-              {role !== "profesor"
-                ? "Usuario"
-                : "Nómina o correo institucional"}
-              <input
-                name="identifier"
-                defaultValue={
-                  role === "profesor"
-                    ? new URLSearchParams(location.search).get("nomina") || ""
-                    : ""
-                }
-                key={role}
-                required={role !== "admin"}
-                autoComplete="username"
-                placeholder={
-                  role === "admin"
-                    ? "Vacío solo para configuración inicial"
-                    : "Tu nómina o correo"
-                }
-              />
-            </label>
-            {role !== "profesor" && (
+            <div className="orbit-card orbit-card--bottom">
+              <Icon name="users" size={16} /> Un espacio compartido
+            </div>
+            <form className="login-card" onSubmit={login}>
+              <div className="login-card__icon">
+                <Icon name="user" size={26} />
+              </div>
+              <span className="eyebrow">BIENVENIDO</span>
+              <h2>Ingresa a tu espacio</h2>
+              <p className="login-card__intro">
+                Selecciona tu perfil para continuar.
+              </p>
+              <div className="tabs">
+                {["profesor", "admin", "consulta"].map((r) => (
+                  <button
+                    type="button"
+                    key={r}
+                    className={role === r ? "active" : ""}
+                    onClick={() => setRole(r)}
+                  >
+                    {r === "admin"
+                      ? "Administrador"
+                      : r === "consulta"
+                        ? "Consulta"
+                        : "Profesor"}
+                  </button>
+                ))}
+              </div>
               <label>
-                Contraseña
+                {role !== "profesor"
+                  ? "Usuario"
+                  : "Nómina o correo institucional"}
                 <input
-                  type="password"
-                  name="password"
-                  required
-                  autoComplete="current-password"
+                  name="identifier"
+                  defaultValue={
+                    role === "profesor"
+                      ? new URLSearchParams(location.search).get("nomina") || ""
+                      : ""
+                  }
+                  key={role}
+                  required={role !== "admin"}
+                  autoComplete="username"
+                  placeholder={
+                    role === "admin"
+                      ? "Vacío solo para configuración inicial"
+                      : "Tu nómina o correo"
+                  }
                 />
               </label>
-            )}
-            <button
-              className="primary"
-              disabled={busy || !online || me === null}
-            >
-              {busy ? "Ingresando…" : "Ingresar →"}
-            </button>
-            <p className="muted">
-              {role === "profesor"
-                ? "Abre el enlace privado que compartió tu administrador. Si venció o ya lo utilizaste, solicita uno nuevo."
-                : "Usa tu cuenta individual. El acceso inicial se configura con el responsable del sistema."}
-            </p>
-            {!config.production && (
+              {role !== "profesor" && (
+                <label>
+                  Contraseña
+                  <input
+                    type="password"
+                    name="password"
+                    required
+                    autoComplete="current-password"
+                  />
+                </label>
+              )}
+              <button
+                className="primary"
+                disabled={busy || !online || me === null}
+              >
+                {busy ? "Ingresando…" : "Ingresar →"}
+              </button>
               <p className="muted">
-                Demostración local: L001, L002 o L003. Contraseña inicial de
-                administrador: admin-demo.
+                {role === "profesor"
+                  ? "Abre el enlace privado que compartió tu administrador. Si venció o ya lo utilizaste, solicita uno nuevo."
+                  : "Usa tu cuenta individual. El acceso inicial se configura con el responsable del sistema."}
               </p>
-            )}
-            {error && (
-              <div className="alert error" role="alert">
-                {error}
-              </div>
-            )}
-          </form>
+              {!config.production && (
+                <p className="muted">
+                  Demostración local: L001, L002 o L003. Contraseña inicial de
+                  administrador: admin-demo.
+                </p>
+              )}
+              {error && (
+                <div className="alert error" role="alert">
+                  {error}
+                </div>
+              )}
+            </form>
+          </div>
         </main>
       ) : (
         <div className="app-shell">
           <nav className="sidebar" aria-label="Navegación principal">
+            <Brand light />
             <small>MI ESPACIO</small>
             {menu.map((t) => (
               <button
                 key={t}
                 className={tab === t ? "active" : ""}
                 onClick={() => changeTab(t)}
+                aria-current={tab === t ? "page" : undefined}
               >
-                {t}
+                <Icon name={navIcons[t]} />
+                <span>{t}</span>
               </button>
             ))}
             <div className="sidebar-foot">
@@ -888,7 +934,7 @@ function App() {
               <>
                 <div className="page-heading">
                   <div>
-                    <span className="eyebrow">PROGRAMACIÓN ACADÉMICA</span>
+                    <span className="eyebrow">GESTIÓN DEL SEMESTRE</span>
                     <h1>
                       {tab === "Inicio"
                         ? readAll
@@ -1694,8 +1740,7 @@ function App() {
         </div>
       )}
       <footer>
-        ARTE · PROGRAMACIÓN ACADÉMICA{" "}
-        <span>Docencia, coordinación y comunidad.</span>
+        COORDINACIÓN ACADÉMICA <span>Docencia, coordinación y comunidad.</span>
       </footer>
     </>
   );
