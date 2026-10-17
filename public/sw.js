@@ -1,4 +1,4 @@
-const CACHE = "arte-fj27-v1";
+const CACHE = "arte-fj27-v2";
 self.addEventListener("install", (e) => {
   e.waitUntil(
     caches

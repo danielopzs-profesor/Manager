@@ -509,7 +509,7 @@ function App() {
                             })
                           }
                         >
-                          Enviar oferta horaria por correo
+                          Enviar / compartir oferta
                         </button>
                         <button
                           className="ghost"
@@ -674,7 +674,7 @@ function App() {
                     change: "Solicitar cambio",
                     professor: "Profesor",
                     class: "Clase asignada",
-                    preview: "Vista previa del correo",
+                    preview: "Oferta y enlace privado",
                     import: "Importar programación",
                   }[modal.type]
                 }

@@ -1,6 +1,8 @@
 # Programación Arte FJ27
 
-PWA responsiva con React, Vite, Express y ExcelJS. Node.js 22.12+ (validada con Node 24). El Excel es el almacenamiento del servidor; no hace falta una base de datos externa.
+**Publicación en Netlify:** sigue [la guía paso a paso](DEPLOY_NETLIFY.md). Incluye Functions, PostgreSQL persistente y acceso mediante enlaces privados; no requiere que tu computadora esté encendida.
+
+PWA responsiva con React, Vite, Express y ExcelJS. Node.js 22.12+ (validada con Node 24). En modo local, el Excel es el almacenamiento del servidor. Con `DATABASE_URL`, se utiliza PostgreSQL persistente y el Excel funciona como formato de importación/exportación; este es el modo obligatorio en Netlify.
 
 ## Ejecutar localmente
 
@@ -31,7 +33,7 @@ Las columnas deben aparecer en este orden, con estos encabezados exactos:
 | Materias | id_materia, nombre_materia, udc |
 | Clases_Asignadas | id_clase, id_materia, nomina_profesor, dias, horario, aula, estatus, comentarios |
 
-Nóminas e identificadores son texto; conserva ceros iniciales. `udc_maximas` vacío usa 14. Días: `Lun,Mar,Mié,Jue,Vie,Sáb,Dom`, sin espacios. Horario: `09:00-11:00`, con inicio anterior al fin. Estatus: `Pendiente`, `Aceptada`, `Cambio Solicitado`. Se rechazan claves duplicadas, referencias inexistentes, valores de carga inválidos y fórmulas. Importaciones hasta 5 MB. Administra materias en el Excel y vuelve a importarlo; profesores y clases también se crean y editan desde la interfaz.
+Nóminas e identificadores son texto; conserva ceros iniciales. `udc_maximas` vacío usa 14. Días: `Lun,Mar,Mié,Jue,Vie,Sáb,Dom`, sin espacios. Horario: `09:00-11:00`, con inicio anterior al fin. Estatus: `Pendiente`, `Aceptada`, `Cambio Solicitado`. Se rechazan claves duplicadas, referencias inexistentes, valores de carga inválidos y fórmulas. Importaciones hasta 3 MB. Administra materias en el Excel y vuelve a importarlo; profesores y clases también se crean y editan desde la interfaz.
 
 Cada respuesta y edición actualiza el archivo mediante escritura temporal y reemplazo atómico. Las operaciones de la aplicación se serializan en un único proceso. La interfaz consulta cambios cada 15 segundos. Las ediciones externas se leen en la siguiente consulta; **no edites el archivo externamente mientras hay escrituras en la aplicación**. No se implementa sincronización con OneDrive/SharePoint ni edición colaborativa distribuida.
 
@@ -39,9 +41,9 @@ La carga suma UDC por **clase asignada**, incluso si existen dos grupos de la mi
 
 ## Correo y acceso
 
-Sin SMTP, el envío muestra una vista previa con resumen y enlace. Con `SMTP_HOST`, configura `SMTP_PORT` (587 STARTTLS o 465 TLS), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`. No guardes secretos en Git. El enlace contiene un token de uso único, vence en 48 horas y exige ingresar la nómina o correo del destinatario. En producción es obligatorio; conocer la nómina por sí sola no permite entrar.
+Sin SMTP, el envío muestra una vista previa con resumen y enlace. Con `SMTP_HOST`, configura `SMTP_PORT` (587 STARTTLS o 465 TLS), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`. No guardes secretos en Git. El enlace contiene un token de uso único, vence en 48 horas y exige ingresar la nómina o correo del destinatario. En producción es obligatorio; también puedes usar `OFFER_DELIVERY=manual` para generar un enlace privado desde el administrador y enviarlo personalmente sin SMTP; conocer la nómina por sí sola no permite entrar.
 
-Las sesiones y tokens se guardan en memoria: un reinicio cierra sesiones e invalida enlaces. Reenvía las ofertas después de reiniciar. Este diseño funciona para una instancia; para múltiples instancias o sesiones duraderas se requiere un almacén compartido y persistente. No se implementan recuperación de contraseña, SSO, auditoría histórica ni detección automática de conflictos.
+En modo local sin `DATABASE_URL`, las sesiones y tokens se guardan en memoria: un reinicio cierra sesiones e invalida enlaces. Reenvía las ofertas después de reiniciar. Este diseño funciona para una instancia; para múltiples instancias o sesiones duraderas se requiere un almacén compartido y persistente. No se implementan recuperación de contraseña, SSO, auditoría histórica ni detección automática de conflictos.
 
 ## Despliegue
 
@@ -58,7 +60,7 @@ docker build -t arte-fj27 .
 docker run --env-file .env -p 3000:3000 -v arte-data:/app/data arte-fj27
 ```
 
-Pon las variables de producción en `.env` y publica el contenedor detrás de HTTPS. Para Render/Railway u otro host, usa build `npm ci && npm run build`, inicio `npm start` y disco persistente; evita plataformas con filesystem efímero o funciones serverless.
+Pon las variables de producción en `.env` y publica el contenedor detrás de HTTPS. Para Render/Railway u otro host, usa build `npm ci && npm run build`, inicio `npm start` y disco persistente; para funciones serverless utiliza la adaptación Netlify + PostgreSQL descrita en DEPLOY_NETLIFY.md.
 
 ## PWA
 
@@ -67,3 +69,5 @@ Manifest e icono SVG incluidos. El service worker se registra en compilaciones d
 ## Comprobaciones
 
 `npm test` verifica lectura/escritura real del Excel, validaciones, concurrencia y API con sesiones, permisos e importación/exportación. `npm run build` verifica el bundle de producción. SMTP real, instalación en un teléfono y despliegue HTTPS requieren infraestructura externa y deben validarse en el destino.
+
+La integración PostgreSQL/serverless se ejecuta con `TEST_DATABASE_URL` en una base exclusiva de pruebas. Sin esa variable, se omite explícitamente; no apunta a tu base de producción. La configuración Netlify no publica automáticamente el sitio ni crea la base.
