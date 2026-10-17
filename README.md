@@ -90,7 +90,7 @@ Sin SMTP, `OFFER_DELIVERY=manual` permite compartir ofertas personalmente. Con S
 
 Netlify utiliza `netlify.toml` y `netlify/functions/api.mjs`; conecta GitHub y establece `DATABASE_URL`, `ADMIN_PASSWORD`, `SESSION_SECRET` (mínimo 32 caracteres), `OFFER_DELIVERY=manual`. `PUBLIC_URL` permite un dominio propio HTTPS; si no está definido, se utiliza la URL principal proporcionada por Netlify.
 
-Un push a main puede iniciar un deploy si la publicación automática está habilitada. El código incluye la migración de Neon al iniciar la función; no hace falta borrar la base ni reemplazar secretos. `/api/config` expone la versión pública (`3.0.0`) sin datos privados.
+Un push a main puede iniciar un deploy si la publicación automática está habilitada. El código incluye la migración de Neon al iniciar la función; no hace falta borrar la base ni reemplazar secretos. `/api/config` expone la versión pública (`3.0.1`) sin datos privados.
 
 También se incluye Dockerfile para un servidor propio. En producción: HTTPS, `NODE_ENV=production`, secretos fuertes, almacenamiento persistente y `TRUST_PROXY=1` solo detrás de un proxy de confianza. Con PostgreSQL, varias instancias comparten sesiones, límites de acceso y tokens.
 

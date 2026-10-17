@@ -1,3 +1,9 @@
+# 3.0.1 — Acceso tras cambio de dominio
+
+- Valida tanto el dominio personalizado configurado como la dirección principal proporcionada por Netlify.
+- Al renombrar un sitio Netlify, reemplaza un alias antiguo de PUBLIC_URL por la dirección principal actual, también para enlaces de profesores.
+- Conserva el rechazo de sitios externos y vistas previas no autorizadas.
+
 # 3.0.0 — Modelo académico semestral
 
 - UF materia/bloque, ofertas con clave y grupo independientes y múltiples docentes por grupo.

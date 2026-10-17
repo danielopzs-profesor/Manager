@@ -17,19 +17,20 @@ import {
   publishIssues,
 } from "./academic.js";
 import { passwordMatches } from "./accounts.js";
+import { originPolicy } from "./origins.js";
 export async function createApp({
   serverless = false,
   env = process.env,
 } = {}) {
   const production = env.NODE_ENV === "production" || serverless;
-  const publicUrl =
-    env.PUBLIC_URL || (serverless ? env.URL : null) || "http://localhost:5173";
+  const policy = originPolicy(env, { serverless, production });
+  const publicUrl = policy.publicUrl;
   if (
     production &&
     (!env.ADMIN_PASSWORD ||
       !env.SESSION_SECRET ||
       env.SESSION_SECRET.length < 32 ||
-      !publicUrl.startsWith("https://"))
+      !publicUrl?.startsWith("https://"))
   ) {
     throw Error(
       "Configura ADMIN_PASSWORD, SESSION_SECRET (32 caracteres mínimo) y una URL HTTPS",
@@ -73,9 +74,13 @@ export async function createApp({
     if (
       !["GET", "HEAD"].includes(req.method) &&
       req.get("origin") &&
-      req.get("origin") !== new URL(publicUrl).origin
+      !policy.allows(req.get("origin"))
     )
-      return res.status(403).json({ error: "Origen no permitido" });
+      return res
+        .status(403)
+        .json({
+          error: `Esta dirección no está autorizada. Abre la aplicación desde ${policy.origins.join(" o ")}. Si usas un dominio nuevo, actualiza PUBLIC_URL y vuelve a desplegar.`,
+        });
     next();
   });
   const auth = (req, res, next) => {
@@ -207,7 +212,13 @@ export async function createApp({
     }),
   );
   app.get("/api/config", (req, res) =>
-    res.json({ production, version: "3.0.0", schema: 2 }),
+    res.json({
+      production,
+      version: "3.0.1",
+      schema: 2,
+      publicUrl,
+      allowedOrigins: policy.origins,
+    }),
   );
   academicRoutes(app, { store, auth, admin });
   app.use(

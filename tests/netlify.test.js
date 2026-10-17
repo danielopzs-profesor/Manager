@@ -52,7 +52,8 @@ test(
         DATABASE_URL: process.env.TEST_DATABASE_URL,
         ADMIN_PASSWORD: "test-password",
         SESSION_SECRET: "test-secret-longer-than-thirty-two-characters",
-        PUBLIC_URL: "https://arte.example.test",
+        PUBLIC_URL: "https://otro.example.test",
+        URL: "https://arte.example.test",
         OFFER_DELIVERY: "manual",
       });
       const one = await import(
