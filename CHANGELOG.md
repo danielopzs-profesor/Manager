@@ -1,3 +1,10 @@
+# 3.1.0 — Rol de consulta
+
+- Cuentas Consulta con acceso de lectura a UF, ofertas, profesores, carga y horarios.
+- Permisos verificados en servidor: sin escritura, aceptación, notificaciones, exportación ni administración de cuentas.
+- Gestión en Usuarios y permisos, con selección de rol e invalidación de sesiones tras cambios de permisos.
+- Cuentas anteriores siguen siendo administrativas y se protege al último administrador.
+
 # 3.0.1 — Acceso tras cambio de dominio
 
 - Valida tanto el dominio personalizado configurado como la dirección principal proporcionada por Netlify.

@@ -8,7 +8,7 @@ Se conserva la programación anterior como borradores para revisión. El sistema
 
 1. Abre el mismo enlace de Netlify y recarga con Ctrl + F5 cuando termine el nuevo deploy.
 2. Selecciona Administrador. Si nunca creaste cuentas individuales, deja usuario vacío y usa tu contraseña de `ADMIN_PASSWORD`.
-3. Entra a Administradores y crea tu cuenta, con usuario, nombre y una contraseña de al menos 12 caracteres. Guárdala en un lugar seguro.
+3. Entra a Usuarios y permisos y crea tu cuenta, con usuario, nombre y una contraseña de al menos 12 caracteres. Guárdala en un lugar seguro.
 4. Crea las otras tres cuentas con usuarios distintos. Comunica sus contraseñas por un canal privado. El acceso compartido inicial deja de funcionar al crear la primera cuenta.
 
 ## Preparar el semestre

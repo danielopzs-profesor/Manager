@@ -1,4 +1,4 @@
-const CACHE = "arte-academico-v3";
+const CACHE = "arte-academico-v3.1";
 self.addEventListener("install", (e) => {
   e.waitUntil(
     caches

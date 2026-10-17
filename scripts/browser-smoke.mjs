@@ -62,11 +62,9 @@ try {
     .click();
   await page.getByText("Oferta publicada. Ya puedes compartirla.").waitFor();
   await page
-    .getByRole("button", { name: "Administradores", exact: true })
+    .getByRole("button", { name: "Usuarios y permisos", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: "+ Administrador", exact: true })
-    .click();
+  await page.getByRole("button", { name: "+ Usuario", exact: true }).click();
   await dialog.getByLabel("Usuario", { exact: true }).fill("admin.uno");
   await dialog.getByLabel("Nombre", { exact: true }).fill("Admin Uno");
   await dialog
@@ -75,6 +73,15 @@ try {
   await dialog.getByRole("button", { name: "Confirmar", exact: true }).click();
   await dialog.waitFor({ state: "hidden" });
   await page.getByText("Admin Uno", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "+ Usuario", exact: true }).click();
+  await dialog.getByLabel("Usuario", { exact: true }).fill("lector");
+  await dialog.getByLabel("Nombre", { exact: true }).fill("Usuario Consulta");
+  await dialog.locator("select[name=role]").selectOption("consulta");
+  await dialog
+    .getByLabel("Contraseña", { exact: false })
+    .fill("browser-reader-password");
+  await dialog.getByRole("button", { name: "Confirmar", exact: true }).click();
+  await dialog.waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "Datos", exact: true }).click();
   await page.getByRole("heading", { name: "Versiones anteriores" }).waitFor();
   await page
@@ -98,6 +105,52 @@ try {
     ),
     false,
     "Desbordamiento horizontal de la página móvil",
+  );
+  await page
+    .getByRole("button", { name: "Cerrar sesión", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Profesor", exact: true }).click();
+  await page.getByRole("button", { name: "Consulta", exact: true }).click();
+  await page.getByLabel("Usuario", { exact: true }).fill("lector");
+  await page
+    .getByLabel("Contraseña", { exact: true })
+    .fill("browser-reader-password");
+  await page.getByRole("button", { name: "Ingresar →" }).click();
+  await page
+    .getByRole("heading", { name: "Una mirada al semestre." })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Usuarios y permisos", exact: true })
+      .count(),
+    0,
+  );
+  await page.getByRole("button", { name: "Profesores", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Mariana Torres", exact: true })
+    .waitFor();
+  assert.equal(
+    await page.getByRole("button", { name: "+ Profesor", exact: true }).count(),
+    0,
+  );
+  await page
+    .getByRole("button", { name: "Unidades de formación", exact: true })
+    .click();
+  assert.equal(
+    await page.getByRole("button", { name: "Editar", exact: true }).count(),
+    0,
+  );
+  await page.getByRole("button", { name: "Ofertas", exact: true }).click();
+  await page.getByRole("button", { name: "Ver asignación →" }).first().click();
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Publicar oferta", exact: true })
+      .count(),
+    0,
+  );
+  assert.equal(
+    await page.getByRole("button", { name: "Aceptar", exact: true }).count(),
+    0,
   );
   await page
     .getByRole("button", { name: "Cerrar sesión", exact: true })

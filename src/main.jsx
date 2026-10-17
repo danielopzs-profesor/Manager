@@ -167,6 +167,7 @@ function App() {
         .catch((e) => setError(e.message));
   }, [tab, db?.revision]);
   const admin = me?.role === "admin";
+  const readAll = admin || me?.role === "consulta";
   const find = (collection, id) => db?.[collection]?.find((x) => x.id === id);
   const u = (o) => find("ufs", o.uf);
   const offers = db?.ofertas.filter((o) => o.semestre === sem) || [];
@@ -215,11 +216,13 @@ function App() {
         "Unidades de formación",
         "Ofertas",
         "Solicitudes",
-        "Administradores",
+        "Usuarios y permisos",
         "Historial",
         "Datos",
       ]
-    : ["Inicio", "Mi horario", "Mis respuestas"];
+    : me?.role === "consulta"
+      ? ["Inicio", "Profesores", "Unidades de formación", "Ofertas"]
+      : ["Inicio", "Mi horario", "Mis respuestas"];
   const changeTab = (t) => {
     setTab(t);
     setDetail("");
@@ -272,7 +275,7 @@ function App() {
             className="secondary"
             onClick={() => {
               setDetail(o.id);
-              setTab(admin ? "Ofertas" : "Mis respuestas");
+              setTab(readAll ? "Ofertas" : "Mis respuestas");
             }}
           >
             Ver asignación →
@@ -364,37 +367,38 @@ function App() {
                 {p.comentarios && <blockquote>{p.comentarios}</blockquote>}
               </div>
               <div className="buttons">
-                {admin ? (
-                  <>
-                    <button
-                      className="secondary"
-                      onClick={() => open("participaciones", p)}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      className="plain"
-                      onClick={() => remove("participaciones", p)}
-                    >
-                      Quitar
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      disabled={busy || !online}
-                      onClick={() => response([p.id], "Aceptada")}
-                    >
-                      Aceptar
-                    </button>
-                    <button
-                      className="secondary"
-                      onClick={() => response([p.id], "Cambio Solicitado")}
-                    >
-                      Solicitar cambio
-                    </button>
-                  </>
-                )}
+                {(admin || me.role === "profesor") &&
+                  (admin ? (
+                    <>
+                      <button
+                        className="secondary"
+                        onClick={() => open("participaciones", p)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        className="plain"
+                        onClick={() => remove("participaciones", p)}
+                      >
+                        Quitar
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        disabled={busy || !online}
+                        onClick={() => response([p.id], "Aceptada")}
+                      >
+                        Aceptar
+                      </button>
+                      <button
+                        className="secondary"
+                        onClick={() => response([p.id], "Cambio Solicitado")}
+                      >
+                        Solicitar cambio
+                      </button>
+                    </>
+                  ))}
               </div>
             </div>
           ))
@@ -614,7 +618,7 @@ function App() {
       <section className="panel">
         <div className="section-heading">
           <div>
-            <h2>{admin ? "Distribución de horarios" : "Mi horario"}</h2>
+            <h2>{readAll ? "Distribución de horarios" : "Mi horario"}</h2>
             <p>
               Horas de sesión por segmento; las UDC se cuentan una sola vez en
               el semestre.
@@ -668,7 +672,7 @@ function App() {
                         key={s.id}
                         onClick={() => {
                           setDetail(o.id);
-                          setTab(admin ? "Ofertas" : "Mis respuestas");
+                          setTab(readAll ? "Ofertas" : "Mis respuestas");
                         }}
                       >
                         <span>{s.horario}</span>
@@ -761,20 +765,24 @@ function App() {
             <span className="eyebrow">BIENVENIDO</span>
             <h2>Tu espacio académico</h2>
             <div className="tabs">
-              {["profesor", "admin"].map((r) => (
+              {["profesor", "admin", "consulta"].map((r) => (
                 <button
                   type="button"
                   key={r}
                   className={role === r ? "active" : ""}
                   onClick={() => setRole(r)}
                 >
-                  {r === "admin" ? "Administrador" : "Profesor"}
+                  {r === "admin"
+                    ? "Administrador"
+                    : r === "consulta"
+                      ? "Consulta"
+                      : "Profesor"}
                 </button>
               ))}
             </div>
             <label>
-              {role === "admin"
-                ? "Usuario de administrador"
+              {role !== "profesor"
+                ? "Usuario"
                 : "Nómina o correo institucional"}
               <input
                 name="identifier"
@@ -784,7 +792,7 @@ function App() {
                     : ""
                 }
                 key={role}
-                required={role === "profesor"}
+                required={role !== "admin"}
                 autoComplete="username"
                 placeholder={
                   role === "admin"
@@ -793,7 +801,7 @@ function App() {
                 }
               />
             </label>
-            {role === "admin" && (
+            {role !== "profesor" && (
               <label>
                 Contraseña
                 <input
@@ -842,7 +850,11 @@ function App() {
               </button>
             ))}
             <div className="sidebar-foot">
-              {admin ? "Administración" : "Profesor"}
+              {admin
+                ? "Administración"
+                : me.role === "consulta"
+                  ? "Consulta · Solo lectura"
+                  : "Profesor"}
               <br />
               {me.adminId || me.nomina || "Configuración inicial"}
             </div>
@@ -879,13 +891,13 @@ function App() {
                     <span className="eyebrow">PROGRAMACIÓN ACADÉMICA</span>
                     <h1>
                       {tab === "Inicio"
-                        ? admin
+                        ? readAll
                           ? "Una mirada al semestre."
                           : "Tu próximo semestre."
                         : tab}
                     </h1>
                     <p>
-                      {admin
+                      {readAll
                         ? "Organiza el talento. Da espacio a la creatividad."
                         : "Consulta tus grupos y confirma tu participación."}
                     </p>
@@ -930,7 +942,7 @@ function App() {
                 {tab === "Inicio" && (
                   <>
                     <div className="stats">
-                      {admin ? (
+                      {readAll ? (
                         <>
                           <Stat
                             label="Profesores"
@@ -1006,11 +1018,11 @@ function App() {
                     {!admin && db.profesores.map(professor)}
                     <section>
                       <div className="section-heading">
-                        <h2>{admin ? "Ofertas recientes" : "Mis grupos"}</h2>
+                        <h2>{readAll ? "Ofertas recientes" : "Mis grupos"}</h2>
                         <button
                           className="secondary"
                           onClick={() =>
-                            changeTab(admin ? "Ofertas" : "Mis respuestas")
+                            changeTab(readAll ? "Ofertas" : "Mis respuestas")
                           }
                         >
                           Ver todas →
@@ -1068,9 +1080,11 @@ function App() {
                           ),
                         )}
                       </select>
-                      <button onClick={() => open("profesores")}>
-                        + Profesor
-                      </button>
+                      {admin && (
+                        <button onClick={() => open("profesores")}>
+                          + Profesor
+                        </button>
+                      )}
                     </div>
                     <div className="cards">
                       {db.profesores
@@ -1103,9 +1117,11 @@ function App() {
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Buscar unidad de formación"
                       />
-                      <button onClick={() => open("ufs")}>
-                        + Unidad de formación
-                      </button>
+                      {admin && (
+                        <button onClick={() => open("ufs")}>
+                          + Unidad de formación
+                        </button>
+                      )}
                     </div>
                     <div className="cards">
                       {db.ufs
@@ -1121,20 +1137,22 @@ function App() {
                             <p>
                               {u.id} · {fmt(u.udc)} UDC base
                             </p>
-                            <div className="buttons">
-                              <button
-                                className="secondary"
-                                onClick={() => open("ufs", u)}
-                              >
-                                Editar
-                              </button>
-                              <button
-                                className="plain"
-                                onClick={() => remove("ufs", u)}
-                              >
-                                Eliminar
-                              </button>
-                            </div>
+                            {admin && (
+                              <div className="buttons">
+                                <button
+                                  className="secondary"
+                                  onClick={() => open("ufs", u)}
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  className="plain"
+                                  onClick={() => remove("ufs", u)}
+                                >
+                                  Eliminar
+                                </button>
+                              </div>
+                            )}
                           </article>
                         ))}
                     </div>
@@ -1183,7 +1201,7 @@ function App() {
                             </>
                           )}
                         </div>
-                        {!admin && parts.length > 0 && (
+                        {me.role === "profesor" && parts.length > 0 && (
                           <div className="buttons bulk">
                             <button
                               onClick={() =>
@@ -1252,11 +1270,11 @@ function App() {
                     )}
                   </section>
                 )}
-                {tab === "Administradores" && (
+                {tab === "Usuarios y permisos" && (
                   <section className="panel">
                     <div className="section-heading">
                       <div>
-                        <h2>Cuentas individuales</h2>
+                        <h2>Cuentas y permisos</h2>
                         <p>
                           Al crear la primera cuenta, se desactiva el acceso
                           compartido inicial.
@@ -1267,14 +1285,19 @@ function App() {
                           setModal({ kind: "admin", revision: db.revision })
                         }
                       >
-                        + Administrador
+                        + Usuario
                       </button>
                     </div>
                     {db.admins.map((a) => (
                       <div className="record" key={a.id}>
                         <div>
                           <b>{a.nombre}</b>
-                          <p>{a.id}</p>
+                          <p>
+                            {a.id} ·{" "}
+                            {(a.role || "admin") === "consulta"
+                              ? "Consulta · Solo lectura"
+                              : "Administrador"}
+                          </p>
                         </div>
                         <div className="buttons">
                           <button
@@ -1434,7 +1457,7 @@ function App() {
                       respond: modal.estatus,
                       preview: "Oferta y enlace privado",
                       delete: "Confirmar eliminación",
-                      admin: "Cuenta de administrador",
+                      admin: "Cuenta de acceso",
                       adminDelete: "Eliminar administrador",
                       import: "Reemplazar programación",
                       restore: "Restaurar respaldo",
@@ -1609,6 +1632,20 @@ function App() {
                         required
                         defaultValue={modal.item?.nombre}
                       />
+                    </label>
+                    <label>
+                      Rol
+                      <select
+                        name="role"
+                        defaultValue={modal.item?.role || "admin"}
+                      >
+                        <option value="admin">
+                          Administrador · gestión completa
+                        </option>
+                        <option value="consulta">
+                          Consulta · solo lectura
+                        </option>
+                      </select>
                     </label>
                     <label>
                       Contraseña{" "}

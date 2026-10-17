@@ -77,7 +77,7 @@ Importar (máximo 3 MB) reemplaza los datos académicos, conserva cuentas e hist
 
 ## Cuentas, permisos y enlaces
 
-- Crea cuatro cuentas individuales en Administradores. Contraseñas de 12–200 caracteres, almacenadas con scrypt y salt aleatorio.
+- Crea cuatro cuentas individuales en Usuarios y permisos. Contraseñas de 12–200 caracteres, almacenadas con scrypt y salt aleatorio.
 - El primer acceso usa `ADMIN_PASSWORD` sin usuario. Tras crear la primera cuenta, ese acceso compartido queda deshabilitado. La sesión creadora pasa a la cuenta nueva.
 - Las cuentas eliminadas o cuyas contraseñas cambiaron no conservan acceso con sesiones anteriores. No puedes eliminar la cuenta actual ni el último administrador.
 - Profesor: identifica nómina/correo y presenta un token privado de un uso, vigente 48 h. Su sesión dura hasta 8 h. Los profesores solo ven ofertas publicadas propias.
@@ -90,7 +90,7 @@ Sin SMTP, `OFFER_DELIVERY=manual` permite compartir ofertas personalmente. Con S
 
 Netlify utiliza `netlify.toml` y `netlify/functions/api.mjs`; conecta GitHub y establece `DATABASE_URL`, `ADMIN_PASSWORD`, `SESSION_SECRET` (mínimo 32 caracteres), `OFFER_DELIVERY=manual`. `PUBLIC_URL` permite un dominio propio HTTPS; si no está definido, se utiliza la URL principal proporcionada por Netlify.
 
-Un push a main puede iniciar un deploy si la publicación automática está habilitada. El código incluye la migración de Neon al iniciar la función; no hace falta borrar la base ni reemplazar secretos. `/api/config` expone la versión pública (`3.0.1`) sin datos privados.
+Un push a main puede iniciar un deploy si la publicación automática está habilitada. El código incluye la migración de Neon al iniciar la función; no hace falta borrar la base ni reemplazar secretos. `/api/config` expone la versión pública (`3.1.0`) sin datos privados.
 
 También se incluye Dockerfile para un servidor propio. En producción: HTTPS, `NODE_ENV=production`, secretos fuertes, almacenamiento persistente y `TRUST_PROXY=1` solo detrás de un proxy de confianza. Con PostgreSQL, varias instancias comparten sesiones, límites de acceso y tokens.
 
@@ -108,3 +108,7 @@ npm run test:browser
 `npm test`: reglas académicas, migración, Excel y API local. Para ejecutar la integración Netlify/PostgreSQL define `TEST_DATABASE_URL` en una base **aislada**; la prueba sustituye datos de prueba. Sin esa variable, esa prueba se omite explícitamente. `TEST_NETLIFY_BUNDLE` permite ejecutar la misma integración contra el paquete de Functions generado por Netlify.
 
 La prueba de navegador usa una base Excel temporal, arranca un servidor en 31879 y verifica administración, publicación, aceptación docente y diseño móvil. Si Chromium ya está instalado, puedes establecer `BROWSER_EXECUTABLE` con su ruta. SMTP, publicación final y datos reales requieren comprobación en el destino.
+
+## Rol Consulta (3.1)
+
+En **Usuarios y permisos → + Usuario**, selecciona **Consulta · solo lectura**. Esta cuenta puede consultar todos los catálogos, ofertas (incluidos borradores), docentes, cargas y horarios. No puede editar, eliminar, publicar, aprobar, responder por profesores, compartir ofertas, administrar usuarios, exportar ni restaurar respaldos. No recibe contraseñas, historial ni comentarios privados de solicitudes. Inicia sesión en la pestaña Consulta con usuario y contraseña. Las cuentas anteriores conservan su rol de administrador. Cambiar el rol de una cuenta invalida sus sesiones anteriores. Siempre debe permanecer al menos un administrador.

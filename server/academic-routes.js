@@ -60,7 +60,9 @@ export function academicRoutes(app, { store, auth, admin }) {
       calendario: calendar(a.semestres.find((s) => s.id === semestre)),
       cargas: a.profesores.map((p) => ({
         profesor: p.id,
-        ...workload(a, p.id, semestre),
+        ...(req.session.role === "consulta"
+          ? { ...workload(all, p.id, semestre), aprobacion: null }
+          : workload(a, p.id, semestre)),
         contrato: contract(a, p.id, semestre),
         distribucion: distribution(a, p.id, semestre),
       })),
@@ -200,6 +202,8 @@ export function academicRoutes(app, { store, auth, admin }) {
   });
   app.post("/api/academic/admin", auth, admin, async (req, res) => {
     const { id, nombre, password, remove } = req.body;
+    const role = req.body.role || "admin";
+    if (!["admin", "consulta"].includes(role)) throw Error("Rol inválido");
     const target = String(id || "")
       .trim()
       .toLowerCase();
@@ -213,8 +217,27 @@ export function academicRoutes(app, { store, auth, admin }) {
     let first = false;
     await change(req, (a) => {
       first = a.admins.length === 0;
+      const existing = a.admins.find((x) => x.id === target);
+      const admins = a.admins.filter(
+        (x) => (x.role || "admin") === "admin",
+      ).length;
+      if (first && role !== "admin")
+        throw Error("La primera cuenta debe ser administradora");
+      if (
+        !remove &&
+        existing &&
+        (existing.role || "admin") === "admin" &&
+        role !== "admin" &&
+        (target === req.session.adminId || admins <= 1)
+      )
+        throw Error(
+          "No puedes quitar el rol a tu cuenta actual ni al último administrador",
+        );
       if (remove) {
-        if (target === req.session.adminId || a.admins.length <= 1)
+        if (
+          target === req.session.adminId ||
+          ((existing?.role || "admin") === "admin" && admins <= 1)
+        )
           throw Error(
             "No puedes eliminar tu cuenta actual ni el último administrador",
           );
@@ -229,9 +252,10 @@ export function academicRoutes(app, { store, auth, admin }) {
       if (old)
         Object.assign(old, {
           nombre: nombre.trim(),
+          role,
           ...(hash ? { hash } : {}),
         });
-      else a.admins.push({ id: target, nombre: nombre.trim(), hash });
+      else a.admins.push({ id: target, nombre: nombre.trim(), hash, role });
     });
     if ((first || req.session.adminId === target) && !remove) {
       req.session.adminId = target;

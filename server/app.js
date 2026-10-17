@@ -76,22 +76,19 @@ export async function createApp({
       req.get("origin") &&
       !policy.allows(req.get("origin"))
     )
-      return res
-        .status(403)
-        .json({
-          error: `Esta dirección no está autorizada. Abre la aplicación desde ${policy.origins.join(" o ")}. Si usas un dominio nuevo, actualiza PUBLIC_URL y vuelve a desplegar.`,
-        });
+      return res.status(403).json({
+        error: `Esta dirección no está autorizada. Abre la aplicación desde ${policy.origins.join(" o ")}. Si usas un dominio nuevo, actualiza PUBLIC_URL y vuelve a desplegar.`,
+      });
     next();
   });
   const auth = (req, res, next) => {
     if (!req.session.role)
       return res.status(401).json({ error: "Inicia sesión" });
-    if (req.session.role === "admin") return admin(req, res, next);
+    if (["admin", "consulta"].includes(req.session.role))
+      return accountAuth(req, res, next);
     next();
   };
-  const admin = async (req, res, next) => {
-    if (req.session.role !== "admin")
-      return res.status(403).json({ error: "Solo administrador" });
+  const accountAuth = async (req, res, next) => {
     try {
       const db = await store.read();
       const accounts = db.academic?.admins || [];
@@ -99,18 +96,26 @@ export async function createApp({
         accounts.length &&
         !accounts.some(
           (a) =>
-            a.id === req.session.adminId && a.hash === req.session.adminVersion,
+            a.id === req.session.adminId &&
+            a.hash === req.session.adminVersion &&
+            (a.role || "admin") === req.session.role,
         )
       )
         return res.status(401).json({
           error:
             "Tu acceso cambió. Cierra sesión y vuelve a ingresar con tu cuenta individual.",
         });
+      if (!accounts.length && req.session.role !== "admin")
+        return res.status(401).json({ error: "Cuenta no disponible" });
       next();
     } catch (e) {
       next(e);
     }
   };
+  const admin = (req, res, next) =>
+    req.session.role === "admin"
+      ? accountAuth(req, res, next)
+      : res.status(403).json({ error: "Solo administrador" });
   const equal = (a, b) => {
     const x = Buffer.from(a),
       y = Buffer.from(b);
@@ -145,7 +150,7 @@ export async function createApp({
     async (req, res) => {
       const { role, identifier = "", password = "", token = "" } = req.body;
       let nomina, adminAccount;
-      if (role === "admin") {
+      if (["admin", "consulta"].includes(role)) {
         const db = await store.read();
         const accounts = db.academic?.admins || [];
         if (accounts.length) {
@@ -159,7 +164,10 @@ export async function createApp({
             return res
               .status(401)
               .json({ error: "Usuario o contraseña incorrectos" });
-        } else if (!equal(String(password), env.ADMIN_PASSWORD || "admin-demo"))
+        } else if (
+          role !== "admin" ||
+          !equal(String(password), env.ADMIN_PASSWORD || "admin-demo")
+        )
           return res.status(401).json({ error: "Contraseña incorrecta" });
       } else {
         const db = await store.read();
@@ -185,7 +193,11 @@ export async function createApp({
       await new Promise((resolve, reject) =>
         req.session.regenerate((e) => (e ? reject(e) : resolve())),
       );
-      req.session.role = role === "admin" ? "admin" : "profesor";
+      req.session.role = adminAccount
+        ? adminAccount.role || "admin"
+        : role === "admin"
+          ? "admin"
+          : "profesor";
       req.session.nomina = nomina;
       if (adminAccount) {
         req.session.adminId = adminAccount.id;
@@ -198,7 +210,7 @@ export async function createApp({
       });
     },
   );
-  app.post("/api/logout", auth, (req, res) =>
+  app.post("/api/logout", (req, res) =>
     req.session.destroy(() => {
       res.clearCookie("connect.sid");
       res.json({ ok: true });
@@ -214,7 +226,7 @@ export async function createApp({
   app.get("/api/config", (req, res) =>
     res.json({
       production,
-      version: "3.0.1",
+      version: "3.1.0",
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,

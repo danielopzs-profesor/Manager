@@ -325,6 +325,12 @@ export function publishIssues(a, o) {
   return [...new Set(errors)];
 }
 export function validateAcademic(a) {
+  for (const account of a.admins || [])
+    if (
+      account.role !== undefined &&
+      !["admin", "consulta"].includes(account.role)
+    )
+      fail("Rol de cuenta inválido");
   for (const key of [
     "profesores",
     "ufs",
@@ -503,7 +509,11 @@ export function diffAcademic(before, after) {
         next = after[k].find((r) => r.id === id);
       if (JSON.stringify(old) === JSON.stringify(next)) continue;
       const clean = (r) =>
-        r ? (k === "admins" ? { id: r.id, nombre: r.nombre } : r) : null;
+        r
+          ? k === "admins"
+            ? { id: r.id, nombre: r.nombre, role: r.role || "admin" }
+            : r
+          : null;
       result.push({
         coleccion: k,
         id,
@@ -549,6 +559,16 @@ export function publicAcademic(a, session) {
   const copy = structuredClone(a);
   copy.admins = copy.admins.map(({ hash, ...p }) => p);
   if (session.role === "admin") return copy;
+  if (session.role === "consulta") {
+    copy.admins = [];
+    copy.auditoria = [];
+    copy.sobrecargas = [];
+    copy.participaciones = copy.participaciones.map((p) => ({
+      ...p,
+      comentarios: "",
+    }));
+    return copy;
+  }
   const id = session.nomina;
   copy.profesores = copy.profesores.filter((p) => p.id === id);
   const ids = new Set([
