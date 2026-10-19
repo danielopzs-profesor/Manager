@@ -68,7 +68,7 @@ En Netlify, los datos vigentes viven en Neon. Importar envía los datos del Exce
 
 1. En Profesores pulsa **Configurar acceso** junto a cada profesor.
 2. Guarda una contraseña exclusiva de al menos 12 caracteres y compártela por un canal privado.
-3. El profesor entra directamente al sitio, selecciona Profesor y escribe su correo institucional y contraseña.
+3. El profesor entra directamente al sitio, escribe en Usuario su correo institucional y contraseña.
 4. Puede repetir el ingreso sin generar enlaces. Si olvida su contraseña, usa **Restablecer contraseña**; sus sesiones anteriores se invalidarán.
 5. Compartir oferta es opcional: muestra un resumen y el enlace al portal, sin token de acceso. Con SMTP configurado, ese resumen se envía por correo.
 
@@ -96,4 +96,4 @@ Se usan transacciones PostgreSQL y bloqueo de la fila de programación para evit
 
 Consulta [GUIA_ACADEMICA.md](docs/GUIA_ACADEMICA.md). Mantén DATABASE_URL y SESSION_SECRET actuales. No borres ni recrees Neon. La nueva función guarda copia previa y migra automáticamente. Después, clasifica los docentes, revisa las UF/grupos/periodos y crea las cuentas individuales. La contraseña inicial deja de servir cuando existe la primera cuenta individual; se solicitará usuario y contraseña. Los registros migrados son borradores, no ofertas listas para enviar.
 
-Comprueba que `/api/config` devuelva `version: "3.3.1"` después de que Netlify publique main. Si GitHub no dispara un deploy automáticamente, usa Deploys → Trigger deploy.
+Comprueba que `/api/config` devuelva `version: "3.3.2"` después de que Netlify publique main. Si GitHub no dispara un deploy automáticamente, usa Deploys → Trigger deploy.

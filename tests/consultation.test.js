@@ -85,7 +85,6 @@ test("Consulta: ve toda la programación sin secretos, no puede modificar ni exp
     );
     data = await (await req("/academic", null, ac)).json();
     const reader = await req("/login", {
-      role: "admin",
       identifier: "lector",
       password: "reader-password-123",
     });

@@ -1,3 +1,8 @@
+## 3.3.2
+
+- Formulario único de usuario y contraseña sin selector de perfil. El servidor determina los permisos a partir de la cuenta autenticada.
+- Conserva el acceso inicial con usuario vacío únicamente mientras no existan cuentas administrativas.
+
 ## 3.3.1
 
 - Acceso docente exclusivamente con correo institucional y contraseña; la nómina permanece como identificador interno.

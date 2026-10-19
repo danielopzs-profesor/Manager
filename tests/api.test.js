@@ -181,11 +181,11 @@ test("API académica: cuentas individuales, revisiones, publicación, permisos, 
       401,
     );
     const personal = await request("/login", {
-      role: "admin",
       identifier: "admin.uno",
       password: "individual-password-123",
     });
     assert.equal(personal.status, 200);
+    assert.equal((await personal.clone().json()).role, "admin");
     const pc = personal.headers.get("set-cookie").split(";")[0];
     assert.equal(
       (

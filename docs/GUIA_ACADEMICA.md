@@ -7,7 +7,7 @@ Se conserva la programación anterior como borradores para revisión. El sistema
 ## Primer ingreso
 
 1. Abre el mismo enlace de Netlify y recarga con Ctrl + F5 cuando termine el nuevo deploy.
-2. Selecciona Administrador. Si nunca creaste cuentas individuales, deja usuario vacío y usa tu contraseña de `ADMIN_PASSWORD`.
+2. Si nunca creaste cuentas individuales, deja usuario vacío y usa tu contraseña de `ADMIN_PASSWORD`.
 3. Entra a Usuarios y permisos y crea tu cuenta, con usuario, nombre y una contraseña de al menos 12 caracteres. Guárdala en un lugar seguro.
 4. Crea las otras tres cuentas con usuarios distintos. Comunica sus contraseñas por un canal privado. El acceso compartido inicial deja de funcionar al crear la primera cuenta.
 
@@ -33,7 +33,7 @@ No se genera un contrato laboral. La vigencia de cátedra es una sugerencia acad
 
 1. En Profesores busca su nómina y pulsa **Configurar acceso**.
 2. Establece una contraseña exclusiva de al menos 12 caracteres y compártela personalmente con ese profesor.
-3. El profesor abre la dirección principal, selecciona Profesor e introduce su correo institucional y contraseña. Puede volver a entrar sin solicitar enlaces.
+3. El profesor abre la dirección principal, introduce en Usuario su correo institucional y contraseña. Puede volver a entrar sin solicitar enlaces.
 4. Si la olvida, utiliza **Restablecer contraseña**. Las sesiones anteriores dejan de funcionar.
 5. **Compartir oferta** sigue disponible para enviar el resumen, pero el enlace ya no autentica ni es obligatorio.
 

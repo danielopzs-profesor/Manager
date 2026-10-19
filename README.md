@@ -92,7 +92,7 @@ Sin SMTP, `OFFER_DELIVERY=manual` permite compartir ofertas personalmente. Con S
 
 Netlify utiliza `netlify.toml` y `netlify/functions/api.mjs`; conecta GitHub y establece `DATABASE_URL`, `ADMIN_PASSWORD`, `SESSION_SECRET` (mínimo 32 caracteres), `OFFER_DELIVERY=manual`. `PUBLIC_URL` permite un dominio propio HTTPS; si no está definido, se utiliza la URL principal proporcionada por Netlify.
 
-Un push a main puede iniciar un deploy si la publicación automática está habilitada. El código incluye la migración de Neon al iniciar la función; no hace falta borrar la base ni reemplazar secretos. `/api/config` expone la versión pública (`3.3.1`) sin datos privados.
+Un push a main puede iniciar un deploy si la publicación automática está habilitada. El código incluye la migración de Neon al iniciar la función; no hace falta borrar la base ni reemplazar secretos. `/api/config` expone la versión pública (`3.3.2`) sin datos privados.
 
 También se incluye Dockerfile para un servidor propio. En producción: HTTPS, `NODE_ENV=production`, secretos fuertes, almacenamiento persistente y `TRUST_PROXY=1` solo detrás de un proxy de confianza. Con PostgreSQL, varias instancias comparten sesiones, límites de acceso y tokens.
 
@@ -113,4 +113,6 @@ La prueba de navegador usa una base Excel temporal, arranca un servidor en 31879
 
 ## Rol Consulta (3.1)
 
-En **Usuarios y permisos → + Usuario**, selecciona **Consulta · solo lectura**. Esta cuenta puede consultar todos los catálogos, ofertas (incluidos borradores), docentes, cargas y horarios. No puede editar, eliminar, publicar, aprobar, responder por profesores, compartir ofertas, administrar usuarios, exportar ni restaurar respaldos. No recibe contraseñas, historial ni comentarios privados de solicitudes. Inicia sesión en la pestaña Consulta con usuario y contraseña. Las cuentas anteriores conservan su rol de administrador. Cambiar el rol de una cuenta invalida sus sesiones anteriores. Siempre debe permanecer al menos un administrador.
+En **Usuarios y permisos → + Usuario**, selecciona **Consulta · solo lectura**. Esta cuenta puede consultar todos los catálogos, ofertas (incluidos borradores), docentes, cargas y horarios. No puede editar, eliminar, publicar, aprobar, responder por profesores, compartir ofertas, administrar usuarios, exportar ni restaurar respaldos. No recibe contraseñas, historial ni comentarios privados de solicitudes. Inicia sesión con usuario y contraseña; el sistema reconoce el rol automáticamente. Las cuentas anteriores conservan su rol de administrador. Cambiar el rol de una cuenta invalida sus sesiones anteriores. Siempre debe permanecer al menos un administrador.
+
+El acceso principal muestra únicamente Usuario y Contraseña. Para profesores, el usuario es su correo institucional; para administradores y consulta, su cuenta registrada. El servidor determina el rol y no acepta que el navegador lo elija.

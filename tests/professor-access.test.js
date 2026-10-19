@@ -38,13 +38,12 @@ test("acceso docente por contraseña sin enlace, aislamiento, restablecimiento y
     });
   try {
     const login = await req("/login", {
-      role: "admin",
       password: "initial-admin-password",
     });
     const ac = login.headers.get("set-cookie").split(";")[0];
     let a = await (await req("/academic", null, ac)).json();
     assert.equal(
-      (await req("/login", { role: "profesor", identifier: "mariana@example.edu" })).status,
+      (await req("/login", { identifier: "mariana@example.edu" })).status,
       401,
     );
     const set = await req(
@@ -63,7 +62,6 @@ test("acceso docente por contraseña sin enlace, aislamiento, restablecimiento y
     assert.equal(
       (
         await req("/login", {
-          role: "profesor",
           identifier: "mariana@example.edu",
           password: "incorrecta",
         })
@@ -71,19 +69,18 @@ test("acceso docente por contraseña sin enlace, aislamiento, restablecimiento y
       401,
     );
     assert.equal((await req("/login", {
-      role: "profesor", identifier: "L001", password: "professor-password-123",
+      identifier: "L001", password: "professor-password-123",
     })).status, 401, "La nómina no permite iniciar sesión");
     const teacher = await req("/login", {
-      role: "profesor",
       identifier: "  MARIANA@EXAMPLE.EDU  ",
       password: "professor-password-123",
     });
     assert.equal(teacher.status, 200);
+    assert.equal((await teacher.clone().json()).role, "profesor");
     const tc = teacher.headers.get("set-cookie").split(";")[0];
     assert.equal(
       (
         await req("/login", {
-          role: "profesor",
           identifier: "mariana@example.edu",
           password: "professor-password-123",
         })
@@ -134,7 +131,6 @@ test("acceso docente por contraseña sin enlace, aislamiento, restablecimiento y
     assert.equal(
       (
         await req("/login", {
-          role: "profesor",
           identifier: "mariana@example.edu",
           password: "professor-password-123",
         })
@@ -144,7 +140,6 @@ test("acceso docente por contraseña sin enlace, aislamiento, restablecimiento y
     assert.equal(
       (
         await req("/login", {
-          role: "profesor",
           identifier: "mariana@example.edu",
           password: "replacement-password-123",
         })

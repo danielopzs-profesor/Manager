@@ -152,29 +152,20 @@ export async function createApp({
       },
     }),
     async (req, res) => {
-      const { role, identifier = "", password = "" } = req.body;
-      let nomina, adminAccount, professorVersion;
-      if (["admin", "consulta"].includes(role)) {
-        const db = await store.read();
-        const accounts = db.academic?.admins || [];
-        if (accounts.length) {
-          adminAccount = accounts.find(
-            (a) => a.id === String(identifier).trim().toLowerCase(),
-          );
-          if (
-            !adminAccount ||
-            !(await passwordMatches(password, adminAccount.hash))
-          )
-            return res
-              .status(401)
-              .json({ error: "Usuario o contraseña incorrectos" });
-        } else if (
-          role !== "admin" ||
-          !equal(String(password), env.ADMIN_PASSWORD || "admin-demo")
-        )
-          return res.status(401).json({ error: "Contraseña incorrecta" });
+      const { identifier = "", password = "" } = req.body;
+      const username = String(identifier).trim().toLowerCase();
+      const db = await store.read();
+      const accounts = db.academic?.admins || [];
+      let nomina, professorVersion;
+      const adminAccount = accounts.find((a) => a.id === username);
+      const bootstrap = !accounts.length && !username;
+      if (adminAccount) {
+        if (!(await passwordMatches(password, adminAccount.hash)))
+          return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
+      } else if (bootstrap) {
+        if (!equal(String(password), env.ADMIN_PASSWORD || "admin-demo"))
+          return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
       } else {
-        const db = await store.read();
         const people = db.academic
           ? db.academic.profesores.map((p) => ({ ...p, nomina: p.id }))
           : db.Profesores;
@@ -203,7 +194,7 @@ export async function createApp({
       );
       req.session.role = adminAccount
         ? adminAccount.role || "admin"
-        : role === "admin"
+        : bootstrap
           ? "admin"
           : "profesor";
       req.session.nomina = nomina;
@@ -235,7 +226,7 @@ export async function createApp({
   app.get("/api/config", (req, res) =>
     res.json({
       production,
-      version: "3.3.1",
+      version: "3.3.2",
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,

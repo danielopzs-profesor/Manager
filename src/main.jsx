@@ -88,7 +88,6 @@ function App() {
   const [me, setMe] = useState(null),
     [db, setDb] = useState(null),
     [config, setConfig] = useState({ production: true }),
-    [role, setRole] = useState("profesor"),
     [sem, setSem] = useState(""),
     [tab, setTab] = useState("Inicio"),
     [query, setQuery] = useState(""),
@@ -221,7 +220,6 @@ function App() {
       setMe(
         await api("/login", {
           ...values,
-          role,
         }),
       );
       history.replaceState({}, "", location.pathname);
@@ -814,45 +812,14 @@ function App() {
               </div>
               <span className="eyebrow">BIENVENIDO</span>
               <h2>Ingresa a tu espacio</h2>
-              <p className="login-card__intro">
-                Selecciona tu perfil para continuar.
-              </p>
-              <div className="tabs">
-                {["profesor", "admin", "consulta"].map((r) => (
-                  <button
-                    type="button"
-                    key={r}
-                    className={role === r ? "active" : ""}
-                    onClick={() => setRole(r)}
-                  >
-                    {r === "admin"
-                      ? "Administrador"
-                      : r === "consulta"
-                        ? "Consulta"
-                        : "Profesor"}
-                  </button>
-                ))}
-              </div>
               <label>
-                {role !== "profesor"
-                  ? "Usuario"
-                  : "Correo institucional"}
+                Usuario
                 <input
                   name="identifier"
-                  type={role === "profesor" ? "email" : "text"}
-                  defaultValue={
-                    role === "profesor"
-                      ? new URLSearchParams(location.search).get("correo") || ""
-                      : ""
-                  }
-                  key={role}
-                  required={role !== "admin"}
+                  type="text"
+                  defaultValue={new URLSearchParams(location.search).get("correo") || ""}
                   autoComplete="username"
-                  placeholder={
-                    role === "admin"
-                      ? "Vacío solo para configuración inicial"
-                      : role === "profesor" ? "Tu correo institucional" : "Tu usuario"
-                  }
+                  placeholder="Tu usuario"
                 />
               </label>
               <label>
@@ -860,7 +827,7 @@ function App() {
                 <input
                   type="password"
                   name="password"
-                  required={role !== "profesor" || config.production}
+                  required={config.production}
                   autoComplete="current-password"
                 />
               </label>
@@ -870,11 +837,6 @@ function App() {
               >
                 {busy ? "Ingresando…" : "Ingresar →"}
               </button>
-              <p className="muted">
-                {role === "profesor"
-                  ? "Ingresa con tu correo institucional y tu contraseña. Si aún no tienes contraseña o la olvidaste, solicítala al administrador."
-                  : "Usa tu cuenta individual. El acceso inicial se configura con el responsable del sistema."}
-              </p>
               {!config.production && (
                 <p className="muted">
                   Demostración local: mariana@example.edu. Contraseña inicial de

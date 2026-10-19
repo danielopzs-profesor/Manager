@@ -36,6 +36,8 @@ try {
   await page.goto("http://localhost:31879");
   await mkdir("/tmp/arte-screens", { recursive: true });
   await page.getByRole("heading", { name: "Ingresa a tu espacio" }).waitFor();
+  assert.equal(await page.locator(".login-card input").count(), 2);
+  assert.equal(await page.locator(".login-card .tabs").count(), 0);
   await page.screenshot({
     path: "/tmp/arte-screens/login-desktop.png",
     fullPage: true,
@@ -54,9 +56,6 @@ try {
   });
   await page.setViewportSize({ width: 1440, height: 1050 });
 
-  await page
-    .getByRole("button", { name: "Administrador", exact: true })
-    .click();
   await page
     .getByLabel("Contraseña", { exact: true })
     .fill("browser-test-password");
@@ -139,8 +138,6 @@ try {
   await page
     .getByRole("button", { name: "Cerrar sesión", exact: true })
     .click();
-  await page.getByRole("button", { name: "Profesor", exact: true }).click();
-  await page.getByRole("button", { name: "Consulta", exact: true }).click();
   await page.getByLabel("Usuario", { exact: true }).fill("lector");
   await page
     .getByLabel("Contraseña", { exact: true })
@@ -185,8 +182,7 @@ try {
   await page
     .getByRole("button", { name: "Cerrar sesión", exact: true })
     .click();
-  await page.getByRole("button", { name: "Profesor", exact: true }).click();
-  await page.getByLabel("Correo institucional").fill("mariana@example.edu");
+  await page.getByLabel("Usuario", { exact: true }).fill("mariana@example.edu");
   await page
     .getByLabel("Contraseña", { exact: true })
     .fill("browser-professor-password");
