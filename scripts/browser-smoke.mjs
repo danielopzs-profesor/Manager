@@ -66,7 +66,7 @@ try {
   await page.getByRole("button", { name: "Profesores", exact: true }).click();
   await page.getByRole("button", { name: "+ Profesor", exact: true }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Nómina", { exact: true }).fill("L004");
+  await dialog.getByLabel("Usuario", { exact: true }).fill("L004");
   await dialog.getByLabel("Nombre", { exact: true }).fill("Ana Ejemplo");
   await dialog
     .getByLabel("Correo institucional", { exact: true })

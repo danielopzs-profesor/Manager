@@ -1854,7 +1854,7 @@ function Editor({ modal, db, busy, onSave }) {
         field(
           "id",
           collection === "profesores"
-            ? "Nómina"
+            ? "Usuario"
             : collection === "ufs"
               ? "Clave UF"
               : "Identificador del semestre",
