@@ -1,3 +1,10 @@
+## 3.4.0
+
+- Vinculación explícita entre una cuenta administrativa y un profesor, sin duplicar asignaciones.
+- Mi carga académica: UDC, coordinación, grupos, horario y respuestas propias a ofertas publicadas.
+- Actualización del vínculo en sesiones activas y validación de referencias únicas.
+- Prohibición de aprobar la propia sobrecarga.
+
 ## 3.3.4
 
 - Accesos directos para asignar UF desde Profesores y profesores desde Ofertas.

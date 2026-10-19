@@ -80,6 +80,7 @@ export function Icon({ name = "grid", size = 20 }) {
   );
 }
 export const navIcons = {
+  "Mi carga académica": "calendar",
   Inicio: "grid",
   Profesores: "users",
   "Unidades de formación": "book",

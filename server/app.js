@@ -124,6 +124,8 @@ export async function createApp({
         });
       if (!accounts.length && req.session.role !== "admin")
         return res.status(401).json({ error: "Cuenta no disponible" });
+      const account = accounts.find((a) => a.id === req.session.adminId);
+      req.session.nomina = account?.role !== "consulta" ? account?.profesor || undefined : undefined;
       next();
     } catch (e) {
       next(e);
@@ -200,12 +202,13 @@ export async function createApp({
       req.session.nomina = nomina;
       req.session.professorVersion = professorVersion;
       if (adminAccount) {
+        req.session.nomina = (adminAccount.role || "admin") === "admin" ? adminAccount.profesor || undefined : undefined;
         req.session.adminId = adminAccount.id;
         req.session.adminVersion = adminAccount.hash;
       }
       res.json({
         role: req.session.role,
-        nomina,
+        nomina: req.session.nomina,
         adminId: req.session.adminId,
       });
     },
@@ -216,7 +219,7 @@ export async function createApp({
       res.json({ ok: true });
     }),
   );
-  app.get("/api/me", (req, res) =>
+  app.get("/api/me", (req, res, next) => req.session.role ? auth(req, res, next) : next(), (req, res) =>
     res.json({
       role: req.session.role || null,
       nomina: req.session.nomina,
@@ -226,7 +229,7 @@ export async function createApp({
   app.get("/api/config", (req, res) =>
     res.json({
       production,
-      version: "3.3.4",
+      version: "3.4.0",
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,

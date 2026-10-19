@@ -110,12 +110,22 @@ try {
   await page.getByRole("button", { name: "+ Usuario", exact: true }).click();
   await dialog.getByLabel("Usuario", { exact: true }).fill("admin.uno");
   await dialog.getByLabel("Nombre", { exact: true }).fill("Admin Uno");
+  await dialog.locator("select[name=profesor]").selectOption("L001");
   await dialog
     .getByLabel("Contraseña", { exact: false })
     .fill("browser-personal-password");
   await dialog.getByRole("button", { name: "Confirmar", exact: true }).click();
   await dialog.waitFor({ state: "hidden" });
   await page.getByText("Admin Uno", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Mi carga académica", exact: true }).click();
+  await page.getByRole("heading", { name: "Mi carga académica", exact: true, level: 1 }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Aceptar clases", exact: true }).count(), 1);
+  await page.getByRole("button", { name: "Solicitar cambio", exact: true }).click();
+  await dialog.getByLabel("Observaciones o conflicto de horario", { exact: true }).fill("Revisar mi horario de docencia");
+  await dialog.getByRole("button", { name: "Confirmar respuesta", exact: true }).click();
+  await dialog.waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "Usuarios y permisos", exact: true }).click();
+
   await page.getByRole("button", { name: "+ Usuario", exact: true }).click();
   await dialog.getByLabel("Usuario", { exact: true }).fill("lector");
   await dialog.getByLabel("Nombre", { exact: true }).fill("Usuario Consulta");

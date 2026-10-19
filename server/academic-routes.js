@@ -57,6 +57,7 @@ export function academicRoutes(app, { store, auth, admin }) {
     const semestre = String(req.query.semestre || a.semestres[0]?.id || "");
     res.json({
       ...a,
+      miProfesor: req.session.nomina || null,
       calendario: calendar(a.semestres.find((s) => s.id === semestre)),
       cargas: a.profesores.map((p) => ({
         profesor: p.id,
@@ -139,6 +140,8 @@ export function academicRoutes(app, { store, auth, admin }) {
   });
   app.post("/api/academic/approve", auth, admin, async (req, res) => {
     const { profesor, semestre, motivo } = req.body;
+    if (req.session.nomina === profesor)
+      return res.status(403).json({ error: "Otro administrador debe aprobar tu sobrecarga" });
     if (typeof motivo !== "string" || !motivo.trim() || motivo.length > 2000)
       throw Error(
         "Escribe la justificación de la sobrecarga (máximo 2000 caracteres)",
@@ -166,7 +169,7 @@ export function academicRoutes(app, { store, auth, admin }) {
     res.json({ ok: true });
   });
   app.post("/api/academic/respond", auth, async (req, res) => {
-    if (req.session.role !== "profesor")
+    if (req.session.role !== "profesor" && !(req.session.role === "admin" && req.session.nomina))
       return res
         .status(403)
         .json({ error: "La aceptación corresponde al profesor" });
@@ -247,15 +250,19 @@ export function academicRoutes(app, { store, auth, admin }) {
       if (typeof nombre !== "string" || !nombre.trim())
         throw Error("Nombre obligatorio");
       const old = a.admins.find((x) => x.id === target);
+      const profesor = role === "admin" ? String(req.body.profesor ?? old?.profesor ?? "") : "";
+      if (profesor && !a.profesores.some((p) => p.id === profesor)) throw Error("Profesor inexistente");
+      if (profesor && a.admins.some((x) => x.id !== target && x.profesor === profesor)) throw Error("El profesor ya está vinculado a otra cuenta");
       if (!old && !hash)
         throw Error("Contraseña obligatoria para una cuenta nueva");
       if (old)
         Object.assign(old, {
           nombre: nombre.trim(),
           role,
+          profesor,
           ...(hash ? { hash } : {}),
         });
-      else a.admins.push({ id: target, nombre: nombre.trim(), hash, role });
+      else a.admins.push({ id: target, nombre: nombre.trim(), hash, role, profesor });
     });
     if ((first || req.session.adminId === target) && !remove) {
       req.session.adminId = target;

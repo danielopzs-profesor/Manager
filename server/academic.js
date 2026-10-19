@@ -351,6 +351,12 @@ export function validateAcademic(a) {
       ids.add(r.id);
     }
   }
+  const linked = new Set();
+  for (const account of a.admins || []) {
+    if (!account.profesor) continue;
+    if ((account.role || "admin") !== "admin" || !a.profesores.some((p) => p.id === account.profesor) || linked.has(account.profesor)) fail("Vinculación de profesor inválida o duplicada");
+    linked.add(account.profesor);
+  }
   for (const p of a.profesores) {
     if (
       !nonempty(p.nombre) ||

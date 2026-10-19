@@ -72,3 +72,12 @@ Si aparece «La programación cambió», otro usuario guardó primero. Cierra el
 5. En Ver asignación, completa profesores hasta 100 %, coordinación si es bloque y sesiones con sus docentes. Revisa la carga semestral y publica la oferta.
 
 Guardar una asignación devuelve la oferta a borrador para revisión. Solo el administrador puede asignar; el rol Consulta mantiene acceso de lectura.
+
+## Administrador que también imparte clases
+
+1. Registra al docente en Profesores y conserva sus asignaciones con su identificador actual.
+2. En Usuarios y permisos, edita la cuenta administrativa. En Profesor vinculado selecciona ese registro y guarda. Deja la contraseña vacía para conservarla.
+3. Abre Mi carga académica: verás tus grupos, UDC semestrales (incluida coordinación) y horario. Puedes aceptar tus clases publicadas o solicitar cambios desde la misma cuenta. Los borradores son visibles para revisión pero no aceptables.
+4. Otro administrador debe aprobar tu sobrecarga. La cuenta conserva sus permisos administrativos.
+
+Cada profesor puede vincularse a una sola cuenta administrativa. El vínculo se puede retirar seleccionando Sin vinculación docente; no se eliminan sus asignaciones. Consulta no obtiene permisos de respuesta docente. Una importación debe conservar los profesores vinculados o corregir primero los vínculos. No se crean vínculos automáticamente por nombre ni correo.

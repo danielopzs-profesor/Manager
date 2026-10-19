@@ -127,7 +127,10 @@ function App() {
         setMe(m);
         setConfig(c);
       })
-      .catch((e) => setError(e.message));
+      .catch((e) => {
+        setMe({ role: null });
+        setError(e.message);
+      });
     const cb = () => setOnline(navigator.onLine);
     window.addEventListener("online", cb);
     window.addEventListener("offline", cb);
@@ -188,12 +191,16 @@ function App() {
   const readAll = admin || me?.role === "consulta";
   const find = (collection, id) => db?.[collection]?.find((x) => x.id === id);
   const u = (o) => find("ufs", o.uf);
-  const offers = db?.ofertas.filter((o) => o.semestre === sem) || [];
+  const personal = tab === "Mi carga académica";
+  const myProfessor = db ? db.miProfesor : me?.nomina;
+  const offers = db?.ofertas.filter((o) => o.semestre === sem && (!personal ||
+    db.participaciones.some((p) => p.oferta === o.id && p.profesor === myProfessor) ||
+    db.coordinaciones.some((c) => c.oferta === o.id && c.profesor === myProfessor))) || [];
   const parts =
     db?.participaciones.filter((p) => offers.some((o) => o.id === p.oferta)) ||
     [];
   const sessions =
-    db?.sesiones.filter((s) => offers.some((o) => o.id === s.oferta)) || [];
+    db?.sesiones.filter((s) => offers.some((o) => o.id === s.oferta) && (!personal || split(s.profesores).includes(myProfessor))) || [];
   const open = (collection, item = {}) =>
     setModal({ kind: "edit", collection, item, revision: db.revision });
   const act = async (url, data, revision = db.revision) => {
@@ -228,6 +235,7 @@ function App() {
   const menu = admin
     ? [
         "Inicio",
+        ...(myProfessor ? ["Mi carga académica"] : []),
         "Profesores",
         "Unidades de formación",
         "Ofertas",
@@ -626,7 +634,7 @@ function App() {
             >
               Compartir oferta
             </button>
-            {w.estado === "Sobrecarga pendiente" && (
+            {w.estado === "Sobrecarga pendiente" && p.id !== myProfessor && (
               <button
                 onClick={() =>
                   setModal({
@@ -652,7 +660,7 @@ function App() {
       <section className="panel">
         <div className="section-heading">
           <div>
-            <h2>{readAll ? "Distribución de horarios" : "Mi horario"}</h2>
+            <h2>{readAll && !personal ? "Distribución de horarios" : "Mi horario"}</h2>
             <p>
               Horas de sesión por segmento; las UDC se cuentan una sola vez en
               el semestre.
@@ -1262,6 +1270,33 @@ function App() {
                     )}
                   </>
                 )}
+                {tab === "Mi carga académica" && admin && myProfessor && (
+                  <>
+                    <section className="panel">
+                      <h2>Mi carga académica</h2>
+                      <p>{find("profesores", myProfessor)?.nombre}</p>
+                      <p>{fmt(db.cargas.find((c) => c.profesor === myProfessor)?.total)} UDC semestrales, incluida coordinación.</p>
+                      {!offers.length && <p>No tienes grupos asignados en este semestre.</p>}
+                    </section>
+                    {calendarView()}
+                    {offers.map((o) => (
+                      <section className="panel" key={o.id}>
+                        <h3>{u(o)?.nombre} · Grupo {o.grupo || "—"}</h3>
+                        <p>Clave {o.clave} · {o.periodos} · <Badge value={o.estado} /></p>
+                        {db.participaciones.filter((p) => p.oferta === o.id && p.profesor === myProfessor).map((p) => (
+                          <div key={p.id}>
+                            <p>{fmt(p.porcentaje)} % de responsabilidad · {fmt(o.udc * p.porcentaje / 100)} UDC · <Badge value={p.estatus} /></p>
+                            {o.estado === "Publicada" ? <div className="buttons">
+                              <button disabled={busy || !online} onClick={() => response([p.id], "Aceptada")}>Aceptar clases</button>
+                              <button className="secondary" disabled={busy || !online} onClick={() => response([p.id], "Cambio Solicitado")}>Solicitar cambio</button>
+                            </div> : <p>Podrás responder cuando la oferta esté publicada.</p>}
+                          </div>
+                        ))}
+                        {db.coordinaciones.filter((c) => c.oferta === o.id && c.profesor === myProfessor).map((c) => <p key={c.id}>Coordinación: {fmt(c.udc)} UDC adicionales.</p>)}
+                      </section>
+                    ))}
+                  </>
+                )}
                 {tab === "Mi horario" && calendarView()}
                 {tab === "Solicitudes" && (
                   <section className="panel">
@@ -1321,6 +1356,7 @@ function App() {
                             {(a.role || "admin") === "consulta"
                               ? "Consulta · Solo lectura"
                               : "Administrador"}
+                            {a.profesor && ` · Docente: ${find("profesores", a.profesor)?.nombre || a.profesor}`}
                           </p>
                         </div>
                         <div className="buttons">
@@ -1700,6 +1736,13 @@ function App() {
                         <option value="consulta">
                           Consulta · solo lectura
                         </option>
+                      </select>
+                    </label>
+                    <label>
+                      Profesor vinculado (opcional, solo administradores)
+                      <select name="profesor" defaultValue={modal.item?.profesor || ""}>
+                        <option value="">Sin vinculación docente</option>
+                        {db.profesores.map((p) => <option key={p.id} value={p.id}>{p.nombre} · {p.id}</option>)}
                       </select>
                     </label>
                     <label>
