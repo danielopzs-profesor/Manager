@@ -836,12 +836,13 @@ function App() {
               <label>
                 {role !== "profesor"
                   ? "Usuario"
-                  : "Nómina o correo institucional"}
+                  : "Correo institucional"}
                 <input
                   name="identifier"
+                  type={role === "profesor" ? "email" : "text"}
                   defaultValue={
                     role === "profesor"
-                      ? new URLSearchParams(location.search).get("nomina") || ""
+                      ? new URLSearchParams(location.search).get("correo") || ""
                       : ""
                   }
                   key={role}
@@ -850,7 +851,7 @@ function App() {
                   placeholder={
                     role === "admin"
                       ? "Vacío solo para configuración inicial"
-                      : "Tu nómina o correo"
+                      : role === "profesor" ? "Tu correo institucional" : "Tu usuario"
                   }
                 />
               </label>
@@ -871,12 +872,12 @@ function App() {
               </button>
               <p className="muted">
                 {role === "profesor"
-                  ? "Ingresa con tu nómina o correo y tu contraseña. Si aún no tienes contraseña o la olvidaste, solicítala al administrador."
+                  ? "Ingresa con tu correo institucional y tu contraseña. Si aún no tienes contraseña o la olvidaste, solicítala al administrador."
                   : "Usa tu cuenta individual. El acceso inicial se configura con el responsable del sistema."}
               </p>
               {!config.production && (
                 <p className="muted">
-                  Demostración local: L001, L002 o L003. Contraseña inicial de
+                  Demostración local: mariana@example.edu. Contraseña inicial de
                   administrador: admin-demo.
                 </p>
               )}
@@ -1679,8 +1680,7 @@ function App() {
                 {modal.kind === "professorPassword" && (
                   <>
                     <p>
-                      Usuario: <b>{modal.profesor}</b> o su correo
-                      institucional. Comparte la contraseña personalmente; no
+                      Usuario: <b>{find("profesores", modal.profesor)?.correo}</b>. Comparte la contraseña personalmente; no
                       aparecerá en exportaciones ni en el historial.
                     </p>
                     <label>

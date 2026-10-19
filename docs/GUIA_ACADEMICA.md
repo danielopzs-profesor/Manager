@@ -33,11 +33,11 @@ No se genera un contrato laboral. La vigencia de cátedra es una sugerencia acad
 
 1. En Profesores busca su nómina y pulsa **Configurar acceso**.
 2. Establece una contraseña exclusiva de al menos 12 caracteres y compártela personalmente con ese profesor.
-3. El profesor abre la dirección principal, selecciona Profesor e introduce su nómina/correo y contraseña. Puede volver a entrar sin solicitar enlaces.
+3. El profesor abre la dirección principal, selecciona Profesor e introduce su correo institucional y contraseña. Puede volver a entrar sin solicitar enlaces.
 4. Si la olvida, utiliza **Restablecer contraseña**. Las sesiones anteriores dejan de funcionar.
 5. **Compartir oferta** sigue disponible para enviar el resumen, pero el enlace ya no autentica ni es obligatorio.
 
-La sesión dura hasta ocho horas; después basta con ingresar nuevamente con la contraseña. En la demostración local, solo los profesores ficticios sin contraseña pueden seguir entrando por nómina; esa excepción no se permite en producción.
+La sesión dura hasta ocho horas; después basta con ingresar nuevamente con la contraseña. En la demostración local, solo los profesores ficticios sin contraseña pueden seguir entrando por correo institucional; esa excepción no se permite en producción.
 
 Si cambias una asignación o sus horarios, la oferta vuelve a borrador y las respuestas afectadas se reinician: revisa y publica nuevamente. No se permite aceptar por el profesor desde Administración.
 

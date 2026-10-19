@@ -153,7 +153,7 @@ test(
         (
           await request(two, "/login", {
             role: "profesor",
-            identifier: "L001",
+            identifier: "mariana@example.edu",
             password: "wrong",
           })
         ).statusCode,
@@ -161,7 +161,7 @@ test(
       );
       const p = await request(two, "/login", {
         role: "profesor",
-        identifier: "L001",
+        identifier: "mariana@example.edu",
         password: "professor-password-123",
       });
       assert.equal(p.statusCode, 200, p.body);

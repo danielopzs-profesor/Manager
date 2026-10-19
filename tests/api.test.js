@@ -72,7 +72,7 @@ test("API académica: cuentas individuales, revisiones, publicación, permisos, 
     );
     const teacher = await request("/login", {
       role: "profesor",
-      identifier: "L001",
+      identifier: "mariana@example.edu",
     });
     const tc = teacher.headers.get("set-cookie").split(";")[0];
     let t = await (await request("/academic", null, tc)).json();

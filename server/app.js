@@ -178,18 +178,18 @@ export async function createApp({
         const people = db.academic
           ? db.academic.profesores.map((p) => ({ ...p, nomina: p.id }))
           : db.Profesores;
-        const p = people.find(
-          (p) =>
-            p.nomina === identifier ||
-            p.correo.toLowerCase() === String(identifier).toLowerCase(),
+        const email = String(identifier || "").trim().toLowerCase();
+        const matches = people.filter(
+          (p) => String(p.correo || "").trim().toLowerCase() === email,
         );
-        if (!p)
-          return res.status(401).json({ error: "Profesor no encontrado" });
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || matches.length !== 1)
+          return res.status(401).json({ error: "Correo institucional o contraseña incorrectos" });
+        const p = matches[0];
         if (p.passwordHash) {
           if (!(await passwordMatches(password, p.passwordHash)))
             return res
               .status(401)
-              .json({ error: "Nómina/correo o contraseña incorrectos" });
+              .json({ error: "Correo institucional o contraseña incorrectos" });
         } else if (production)
           return res.status(401).json({
             error:
@@ -235,7 +235,7 @@ export async function createApp({
   app.get("/api/config", (req, res) =>
     res.json({
       production,
-      version: "3.3.0",
+      version: "3.3.1",
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,
@@ -283,7 +283,7 @@ export async function createApp({
           "Primero completa y publica al menos una oferta para este profesor.",
       });
     const url = new URL(publicUrl);
-    url.searchParams.set("nomina", p.id);
+    url.searchParams.set("correo", p.correo);
 
     const text =
       `Hola ${p.nombre},\nTu oferta académica:\n` +

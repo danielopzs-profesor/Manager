@@ -186,7 +186,7 @@ try {
     .getByRole("button", { name: "Cerrar sesión", exact: true })
     .click();
   await page.getByRole("button", { name: "Profesor", exact: true }).click();
-  await page.getByLabel("Nómina o correo institucional").fill("L001");
+  await page.getByLabel("Correo institucional").fill("mariana@example.edu");
   await page
     .getByLabel("Contraseña", { exact: true })
     .fill("browser-professor-password");

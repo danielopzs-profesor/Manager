@@ -1,3 +1,8 @@
+## 3.3.1
+
+- Acceso docente exclusivamente con correo institucional y contraseña; la nómina permanece como identificador interno.
+- Enlaces de oferta y configuración de acceso muestran el correo. Se rechazan correos duplicados al autenticar.
+
 # 3.3.0 — Acceso docente con usuario y contraseña
 
 - Los profesores acceden directamente por nómina o correo y contraseña; se retira el requisito de enlace/token en producción.
