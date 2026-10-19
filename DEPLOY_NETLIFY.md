@@ -66,17 +66,13 @@ En Netlify, los datos vigentes viven en Neon. Importar envía los datos del Exce
 
 ## 6. Dar acceso a los profesores
 
-En producción no se permite entrar solo con una nómina conocida.
+1. En Profesores pulsa **Configurar acceso** junto a cada profesor.
+2. Guarda una contraseña exclusiva de al menos 12 caracteres y compártela por un canal privado.
+3. El profesor entra directamente al sitio, selecciona Profesor y escribe su nómina/correo y contraseña.
+4. Puede repetir el ingreso sin generar enlaces. Si olvida su contraseña, usa **Restablecer contraseña**; sus sesiones anteriores se invalidarán.
+5. Compartir oferta es opcional: muestra un resumen y el enlace al portal, sin token de acceso. Con SMTP configurado, ese resumen se envía por correo.
 
-1. Entra como administrador y pulsa **Ver detalle** junto al profesor.
-2. Pulsa **Enviar / compartir oferta**.
-3. Con `OFFER_DELIVERY=manual` aparecerá el resumen y un **enlace privado**.
-4. Copia el enlace completo y envíalo solo al profesor correspondiente por correo o mensaje privado.
-5. El profesor abre ese enlace, selecciona **Profesor** e ingresa su nómina o correo tal como aparece en el Excel.
-
-El enlace vence en 48 horas y se usa una sola vez para iniciar sesión. La sesión dura hasta 8 horas; si necesita ingresar de nuevo, genera otro enlace. Los enlaces y las sesiones ahora sobreviven a los reinicios de funciones y a nuevos despliegues si conservas la misma base y `SESSION_SECRET`.
-
-Para enviar correos automáticamente, configura `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` y `SMTP_FROM` con tu proveedor. Al existir SMTP se envía el mensaje en vez de mostrar el enlace. Debes probar el envío real con una cuenta de prueba. No se pueden usar las credenciales de correo habituales si el proveedor exige una contraseña de aplicación o un servicio SMTP específico.
+Las variables actuales de Netlify no cambian. No se requiere borrar Neon ni crear nuevas cuentas de base de datos. Los profesores existentes deben recibir su contraseña antes de iniciar sesión con esta versión.
 
 ## 7. Comprobar antes de compartir
 
@@ -100,4 +96,4 @@ Se usan transacciones PostgreSQL y bloqueo de la fila de programación para evit
 
 Consulta [GUIA_ACADEMICA.md](docs/GUIA_ACADEMICA.md). Mantén DATABASE_URL y SESSION_SECRET actuales. No borres ni recrees Neon. La nueva función guarda copia previa y migra automáticamente. Después, clasifica los docentes, revisa las UF/grupos/periodos y crea las cuentas individuales. La contraseña inicial deja de servir cuando existe la primera cuenta individual; se solicitará usuario y contraseña. Los registros migrados son borradores, no ofertas listas para enviar.
 
-Comprueba que `/api/config` devuelva `version: "3.2.0"` después de que Netlify publique main. Si GitHub no dispara un deploy automáticamente, usa Deploys → Trigger deploy.
+Comprueba que `/api/config` devuelva `version: "3.3.0"` después de que Netlify publique main. Si GitHub no dispara un deploy automáticamente, usa Deploys → Trigger deploy.

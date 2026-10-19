@@ -13,7 +13,7 @@ npm ci
 npm run dev
 ```
 
-Abre `http://localhost:5173`. Mantén la terminal abierta. Administrador inicial: contraseña `admin-demo`, usuario vacío. Profesores locales ficticios: L001/L002/L003. En producción los profesores necesitan un enlace privado. Al crear la primera cuenta de administrador se deshabilita el acceso compartido inicial, también en local.
+Abre `http://localhost:5173`. Mantén la terminal abierta. Administrador inicial: contraseña `admin-demo`, usuario vacío. Profesores locales ficticios: L001/L002/L003. En producción los profesores entran con nómina/correo y contraseña configurada por un administrador. Al crear la primera cuenta de administrador se deshabilita el acceso compartido inicial, también en local.
 
 ```bash
 npm run build
@@ -80,7 +80,9 @@ Importar (máximo 3 MB) reemplaza los datos académicos, conserva cuentas e hist
 - Crea cuatro cuentas individuales en Usuarios y permisos. Contraseñas de 12–200 caracteres, almacenadas con scrypt y salt aleatorio.
 - El primer acceso usa `ADMIN_PASSWORD` sin usuario. Tras crear la primera cuenta, ese acceso compartido queda deshabilitado. La sesión creadora pasa a la cuenta nueva.
 - Las cuentas eliminadas o cuyas contraseñas cambiaron no conservan acceso con sesiones anteriores. No puedes eliminar la cuenta actual ni el último administrador.
-- Profesor: identifica nómina/correo y presenta un token privado de un uso, vigente 48 h. Su sesión dura hasta 8 h. Los profesores solo ven ofertas publicadas propias.
+- Profesor: accede con nómina o correo institucional y contraseña propia. En Profesores, el administrador usa Configurar acceso / Restablecer contraseña (12–200 caracteres). Las sesiones duran hasta ocho horas; un restablecimiento invalida las sesiones anteriores.
+- Las contraseñas docentes se guardan como hashes scrypt, no se exportan ni se registran en auditoría. Importar Excel o restaurar datos académicos conserva las credenciales actuales; los profesores recuperados sin cuenta actual requieren nueva configuración.
+- Compartir oferta envía un resumen y un enlace normal al portal. No concede acceso por sí mismo y no es necesario para iniciar sesión.
 - No se aceptan clases en nombre de un profesor desde una cuenta administrativa.
 - Historial: actor, fecha, operación y campos antes/después; nunca registra contraseñas o hashes de cuentas.
 
@@ -90,7 +92,7 @@ Sin SMTP, `OFFER_DELIVERY=manual` permite compartir ofertas personalmente. Con S
 
 Netlify utiliza `netlify.toml` y `netlify/functions/api.mjs`; conecta GitHub y establece `DATABASE_URL`, `ADMIN_PASSWORD`, `SESSION_SECRET` (mínimo 32 caracteres), `OFFER_DELIVERY=manual`. `PUBLIC_URL` permite un dominio propio HTTPS; si no está definido, se utiliza la URL principal proporcionada por Netlify.
 
-Un push a main puede iniciar un deploy si la publicación automática está habilitada. El código incluye la migración de Neon al iniciar la función; no hace falta borrar la base ni reemplazar secretos. `/api/config` expone la versión pública (`3.2.0`) sin datos privados.
+Un push a main puede iniciar un deploy si la publicación automática está habilitada. El código incluye la migración de Neon al iniciar la función; no hace falta borrar la base ni reemplazar secretos. `/api/config` expone la versión pública (`3.3.0`) sin datos privados.
 
 También se incluye Dockerfile para un servidor propio. En producción: HTTPS, `NODE_ENV=production`, secretos fuertes, almacenamiento persistente y `TRUST_PROXY=1` solo detrás de un proxy de confianza. Con PostgreSQL, varias instancias comparten sesiones, límites de acceso y tokens.
 

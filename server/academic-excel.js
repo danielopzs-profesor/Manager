@@ -74,6 +74,10 @@ export async function importAcademic(buffer, current) {
         item.estatus = "Pendiente";
         item.comentarios = "";
       }
+      if (name === "profesores") {
+        const old = current.profesores.find((p) => p.id === item.id);
+        if (old?.passwordHash) item.passwordHash = old.passwordHash;
+      }
       a[name].push(item);
     });
   }

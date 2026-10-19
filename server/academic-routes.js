@@ -265,6 +265,22 @@ export function academicRoutes(app, { store, auth, admin }) {
     }
     res.json({ ok: true });
   });
+  app.post(
+    "/api/academic/professor-password",
+    auth,
+    admin,
+    async (req, res) => {
+      const hash = await passwordHash(req.body.password);
+      req.body.action = "Configurar acceso de profesor";
+      req.body.detail = String(req.body.profesor);
+      await change(req, (a) => {
+        const p = a.profesores.find((p) => p.id === req.body.profesor);
+        if (!p) throw Error("Profesor no encontrado");
+        p.passwordHash = hash;
+      });
+      res.json({ ok: true });
+    },
+  );
   app.get("/api/academic/export", auth, admin, async (req, res) => {
     res.attachment("Programacion_Academica.xlsx");
     res.send(Buffer.from(await exportAcademic(await load())));
@@ -278,8 +294,15 @@ export function academicRoutes(app, { store, auth, admin }) {
     req.body.action = "Restaurar respaldo";
     req.body.detail = String(req.body.id);
     await change(req, (a) => {
+      const credentials = new Map(
+        a.profesores.map((p) => [p.id, p.passwordHash]),
+      );
       for (const key of Object.keys(sheets))
         a[key] = structuredClone(previous[key]);
+      a.profesores.forEach((p) => {
+        delete p.passwordHash;
+        if (credentials.get(p.id)) p.passwordHash = credentials.get(p.id);
+      });
       a.sobrecargas = [];
       a.ofertas.forEach((o) => (o.estado = "Borrador"));
       a.participaciones.forEach((p) => {

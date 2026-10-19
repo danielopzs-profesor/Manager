@@ -29,15 +29,17 @@ Se conserva la programación anterior como borradores para revisión. El sistema
 
 No se genera un contrato laboral. La vigencia de cátedra es una sugerencia académica que debe revisar la institución.
 
-## Compartir con un profesor
+## Dar acceso a un profesor
 
-1. En Profesores pulsa Compartir oferta.
-2. Con el envío manual verás un resumen y un enlace. Envíalo completo solo a su destinatario.
-3. El profesor abre el enlace y escribe su nómina/correo.
-4. Puede ver el calendario, aceptar asignaciones o solicitar cambios con comentarios.
-5. El enlace se consume al ingresar; para otro inicio de sesión después de cerrarla o vencer, genera uno nuevo. Vigencia del enlace: 48 horas; sesión: hasta 8 horas.
+1. En Profesores busca su nómina y pulsa **Configurar acceso**.
+2. Establece una contraseña exclusiva de al menos 12 caracteres y compártela personalmente con ese profesor.
+3. El profesor abre la dirección principal, selecciona Profesor e introduce su nómina/correo y contraseña. Puede volver a entrar sin solicitar enlaces.
+4. Si la olvida, utiliza **Restablecer contraseña**. Las sesiones anteriores dejan de funcionar.
+5. **Compartir oferta** sigue disponible para enviar el resumen, pero el enlace ya no autentica ni es obligatorio.
 
-Si cambias una asignación o sus horarios, la oferta vuelve a borrador y las respuestas afectadas se reinician: revisa, publica y comparte nuevamente. No se permite aceptar por el profesor desde Administración.
+La sesión dura hasta ocho horas; después basta con ingresar nuevamente con la contraseña. En la demostración local, solo los profesores ficticios sin contraseña pueden seguir entrando por nómina; esa excepción no se permite en producción.
+
+Si cambias una asignación o sus horarios, la oferta vuelve a borrador y las respuestas afectadas se reinician: revisa y publica nuevamente. No se permite aceptar por el profesor desde Administración.
 
 ## Respaldo y recuperación
 

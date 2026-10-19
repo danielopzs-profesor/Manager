@@ -1,3 +1,10 @@
+# 3.3.0 — Acceso docente con usuario y contraseña
+
+- Los profesores acceden directamente por nómina o correo y contraseña; se retira el requisito de enlace/token en producción.
+- Configuración y restablecimiento de contraseñas desde Profesores, con hash scrypt y revocación de sesiones anteriores.
+- Credenciales excluidas de respuestas, exportaciones e historial; importación y restauración preservan las contraseñas actuales.
+- Compartir oferta se conserva como notificación opcional y no concede acceso.
+
 # 3.2.0 — Identidad visual Coordinación Académica
 
 - Adaptación de la referencia visual ui: azules, cian, superficies translúcidas, tarjetas de métricas y barra lateral oscura.

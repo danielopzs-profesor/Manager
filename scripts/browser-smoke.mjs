@@ -34,13 +34,25 @@ try {
   const failures = [];
   page.on("pageerror", (e) => failures.push(e.message));
   await page.goto("http://localhost:31879");
-  await mkdir('/tmp/arte-screens',{recursive:true});
-  await page.getByRole('heading',{name:'Ingresa a tu espacio'}).waitFor();
-  await page.screenshot({path:'/tmp/arte-screens/login-desktop.png',fullPage:true});
-  await page.setViewportSize({width:390,height:844});
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Login móvil desbordado');
-  await page.screenshot({path:'/tmp/arte-screens/login-mobile.png',fullPage:true});
-  await page.setViewportSize({width:1440,height:1050});
+  await mkdir("/tmp/arte-screens", { recursive: true });
+  await page.getByRole("heading", { name: "Ingresa a tu espacio" }).waitFor();
+  await page.screenshot({
+    path: "/tmp/arte-screens/login-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth,
+    ),
+    false,
+    "Login móvil desbordado",
+  );
+  await page.screenshot({
+    path: "/tmp/arte-screens/login-mobile.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1440, height: 1050 });
 
   await page
     .getByRole("button", { name: "Administrador", exact: true })
@@ -63,6 +75,16 @@ try {
   await dialog.getByRole("button", { name: "Guardar cambios" }).click();
   await dialog.waitFor({ state: "hidden" });
   await page.getByRole("heading", { name: "Ana Ejemplo" }).waitFor();
+  await page
+    .getByRole("heading", { name: "Mariana Torres", exact: true })
+    .locator("..")
+    .getByRole("button", { name: "Configurar acceso", exact: true })
+    .click();
+  await dialog
+    .getByLabel("Nueva contraseña", { exact: true })
+    .fill("browser-professor-password");
+  await dialog.getByRole("button", { name: "Confirmar", exact: true }).click();
+  await dialog.waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "Ofertas", exact: true }).click();
   await page.getByRole("button", { name: "Ver asignación →" }).first().click();
   await page
@@ -165,6 +187,9 @@ try {
     .click();
   await page.getByRole("button", { name: "Profesor", exact: true }).click();
   await page.getByLabel("Nómina o correo institucional").fill("L001");
+  await page
+    .getByLabel("Contraseña", { exact: true })
+    .fill("browser-professor-password");
   await page.getByRole("button", { name: "Ingresar →" }).click();
   await page.getByRole("heading", { name: "Tu próximo semestre." }).waitFor();
   await page

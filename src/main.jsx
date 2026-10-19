@@ -222,7 +222,6 @@ function App() {
         await api("/login", {
           ...values,
           role,
-          token: new URLSearchParams(location.search).get("token") || "",
         }),
       );
       history.replaceState({}, "", location.pathname);
@@ -606,6 +605,18 @@ function App() {
             </button>
             <button
               className="secondary"
+              onClick={() =>
+                setModal({
+                  kind: "professorPassword",
+                  profesor: p.id,
+                  revision: db.revision,
+                })
+              }
+            >
+              {p.hasPassword ? "Restablecer contraseña" : "Configurar acceso"}
+            </button>
+            <button
+              className="secondary"
               disabled={busy}
               onClick={() => notify(p)}
             >
@@ -843,17 +854,15 @@ function App() {
                   }
                 />
               </label>
-              {role !== "profesor" && (
-                <label>
-                  Contraseña
-                  <input
-                    type="password"
-                    name="password"
-                    required
-                    autoComplete="current-password"
-                  />
-                </label>
-              )}
+              <label>
+                Contraseña
+                <input
+                  type="password"
+                  name="password"
+                  required={role !== "profesor" || config.production}
+                  autoComplete="current-password"
+                />
+              </label>
               <button
                 className="primary"
                 disabled={busy || !online || me === null}
@@ -862,7 +871,7 @@ function App() {
               </button>
               <p className="muted">
                 {role === "profesor"
-                  ? "Abre el enlace privado que compartió tu administrador. Si venció o ya lo utilizaste, solicita uno nuevo."
+                  ? "Ingresa con tu nómina o correo y tu contraseña. Si aún no tienes contraseña o la olvidaste, solicítala al administrador."
                   : "Usa tu cuenta individual. El acceso inicial se configura con el responsable del sistema."}
               </p>
               {!config.production && (
@@ -1501,8 +1510,9 @@ function App() {
                   : {
                       approve: "Aprobar sobrecarga",
                       respond: modal.estatus,
-                      preview: "Oferta y enlace privado",
+                      preview: "Oferta para compartir",
                       delete: "Confirmar eliminación",
+                      professorPassword: "Contraseña del profesor",
                       admin: "Cuenta de acceso",
                       adminDelete: "Eliminar administrador",
                       import: "Reemplazar programación",
@@ -1585,6 +1595,12 @@ function App() {
                         { collection: modal.collection, id: modal.item.id },
                         modal.revision,
                       );
+                    if (modal.kind === "professorPassword")
+                      await act(
+                        "/academic/professor-password",
+                        { profesor: modal.profesor, password: values.password },
+                        modal.revision,
+                      );
                     if (modal.kind === "admin") {
                       await act("/academic/admin", values, modal.revision);
                       setMe(await api("/me"));
@@ -1659,6 +1675,30 @@ function App() {
                     ¿Eliminar el acceso de {modal.item.nombre}? No puedes
                     eliminar tu cuenta actual ni la última cuenta.
                   </p>
+                )}
+                {modal.kind === "professorPassword" && (
+                  <>
+                    <p>
+                      Usuario: <b>{modal.profesor}</b> o su correo
+                      institucional. Comparte la contraseña personalmente; no
+                      aparecerá en exportaciones ni en el historial.
+                    </p>
+                    <label>
+                      Nueva contraseña
+                      <input
+                        type="password"
+                        name="password"
+                        required
+                        minLength={12}
+                        maxLength={200}
+                        autoComplete="new-password"
+                      />
+                    </label>
+                    <p>
+                      Las sesiones anteriores del profesor dejarán de funcionar
+                      al restablecerla.
+                    </p>
+                  </>
                 )}
                 {modal.kind === "admin" && (
                   <>

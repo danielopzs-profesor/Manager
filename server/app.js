@@ -86,6 +86,23 @@ export async function createApp({
       return res.status(401).json({ error: "Inicia sesión" });
     if (["admin", "consulta"].includes(req.session.role))
       return accountAuth(req, res, next);
+    if (req.session.role === "profesor")
+      return store
+        .read()
+        .then((db) => {
+          const p = db.academic?.profesores.find(
+            (p) => p.id === req.session.nomina,
+          );
+          if (
+            !p ||
+            (p.passwordHash && p.passwordHash !== req.session.professorVersion)
+          )
+            return res.status(401).json({
+              error: "Tu contraseña cambió. Cierra sesión y vuelve a ingresar.",
+            });
+          next();
+        })
+        .catch(next);
     next();
   };
   const accountAuth = async (req, res, next) => {
@@ -121,19 +138,6 @@ export async function createApp({
       y = Buffer.from(b);
     return x.length === y.length && timingSafeEqual(x, y);
   };
-  const localOffers = new Map();
-  const offers = runtime?.offers || {
-    async put(token, offer) {
-      localOffers.set(token, offer);
-    },
-    async consume(token, nomina) {
-      const offer = localOffers.get(token);
-      if (!offer || offer.nomina !== nomina || offer.expires < Date.now())
-        return false;
-      localOffers.delete(token);
-      return true;
-    },
-  };
   app.post(
     "/api/login",
     rateLimit({
@@ -148,8 +152,8 @@ export async function createApp({
       },
     }),
     async (req, res) => {
-      const { role, identifier = "", password = "", token = "" } = req.body;
-      let nomina, adminAccount;
+      const { role, identifier = "", password = "" } = req.body;
+      let nomina, adminAccount, professorVersion;
       if (["admin", "consulta"].includes(role)) {
         const db = await store.read();
         const accounts = db.academic?.admins || [];
@@ -181,13 +185,17 @@ export async function createApp({
         );
         if (!p)
           return res.status(401).json({ error: "Profesor no encontrado" });
-        if (production) {
-          if (!(await offers.consume(String(token), p.nomina)))
-            return res.status(401).json({
-              error:
-                "Usa el enlace vigente de tu oferta. Solicita uno nuevo al administrador.",
-            });
-        }
+        if (p.passwordHash) {
+          if (!(await passwordMatches(password, p.passwordHash)))
+            return res
+              .status(401)
+              .json({ error: "Nómina/correo o contraseña incorrectos" });
+        } else if (production)
+          return res.status(401).json({
+            error:
+              "Solicita al administrador que configure tu contraseña de acceso.",
+          });
+        professorVersion = p.passwordHash;
         nomina = p.nomina;
       }
       await new Promise((resolve, reject) =>
@@ -199,6 +207,7 @@ export async function createApp({
           ? "admin"
           : "profesor";
       req.session.nomina = nomina;
+      req.session.professorVersion = professorVersion;
       if (adminAccount) {
         req.session.adminId = adminAccount.id;
         req.session.adminVersion = adminAccount.hash;
@@ -226,7 +235,7 @@ export async function createApp({
   app.get("/api/config", (req, res) =>
     res.json({
       production,
-      version: "3.2.0",
+      version: "3.3.0",
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,
@@ -273,10 +282,9 @@ export async function createApp({
         error:
           "Primero completa y publica al menos una oferta para este profesor.",
       });
-    const token = randomBytes(32).toString("hex");
     const url = new URL(publicUrl);
     url.searchParams.set("nomina", p.id);
-    url.searchParams.set("token", token);
+
     const text =
       `Hola ${p.nombre},\nTu oferta académica:\n` +
       ps
@@ -291,11 +299,7 @@ export async function createApp({
             `\nCoordinación ${a.ofertas.find((o) => o.id === c.oferta)?.clave}: ${c.udc} UDC`,
         )
         .join("") +
-      `\nResponde aquí (vigencia 48 h): ${url}`;
-    await offers.put(token, {
-      nomina: p.id,
-      expires: Date.now() + 48 * 3600000,
-    });
+      `\nConsulta y responde con tu usuario y contraseña: ${url}`;
     if (env.SMTP_HOST) {
       const transport = nodemailer.createTransport({
         host: env.SMTP_HOST,
@@ -315,13 +319,13 @@ export async function createApp({
     } else if (production && env.OFFER_DELIVERY !== "manual")
       return res.status(503).json({
         error:
-          "Configura SMTP o activa OFFER_DELIVERY=manual para compartir enlaces privados",
+          "Configura SMTP o activa OFFER_DELIVERY=manual para compartir ofertas",
       });
     res.json({
       mode: env.SMTP_HOST
         ? "enviado"
         : production
-          ? "enlace privado"
+          ? "oferta para compartir"
           : "simulación",
       ...(!env.SMTP_HOST ? { preview: text } : {}),
     });

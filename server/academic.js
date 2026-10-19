@@ -512,7 +512,11 @@ export function diffAcademic(before, after) {
         r
           ? k === "admins"
             ? { id: r.id, nombre: r.nombre, role: r.role || "admin" }
-            : r
+            : k === "profesores"
+              ? Object.fromEntries(
+                  Object.entries(r).filter(([key]) => key !== "passwordHash"),
+                )
+              : r
           : null;
       result.push({
         coleccion: k,
@@ -557,6 +561,10 @@ export function invalidate(a, before) {
 }
 export function publicAcademic(a, session) {
   const copy = structuredClone(a);
+  copy.profesores = copy.profesores.map(({ passwordHash, ...p }) => ({
+    ...p,
+    hasPassword: !!passwordHash,
+  }));
   copy.admins = copy.admins.map(({ hash, ...p }) => p);
   if (session.role === "admin") return copy;
   if (session.role === "consulta") {

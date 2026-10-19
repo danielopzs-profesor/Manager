@@ -134,22 +134,46 @@ test(
       const url = new URL(
         JSON.parse(notify.body).preview.match(/https:\/\/\S+/)[0],
       );
-      const token = url.searchParams.get("token");
+      assert.equal(url.searchParams.has("token"), false);
+      let accessData = JSON.parse(
+        (await request(one, "/academic", null, ac)).body,
+      );
+      const setup = await request(
+        one,
+        "/academic/professor-password",
+        {
+          profesor: "L001",
+          password: "professor-password-123",
+          revision: accessData.revision,
+        },
+        ac,
+      );
+      assert.equal(setup.statusCode, 200, setup.body);
+      assert.equal(
+        (
+          await request(two, "/login", {
+            role: "profesor",
+            identifier: "L001",
+            password: "wrong",
+          })
+        ).statusCode,
+        401,
+      );
       const p = await request(two, "/login", {
         role: "profesor",
         identifier: "L001",
-        token,
+        password: "professor-password-123",
       });
       assert.equal(p.statusCode, 200, p.body);
       assert.equal(
         (
           await request(one, "/login", {
             role: "profesor",
-            identifier: "L001",
-            token,
+            identifier: "mariana@example.edu",
+            password: "professor-password-123",
           })
         ).statusCode,
-        401,
+        200,
       );
       const pc = (p.multiValueHeaders?.["set-cookie"] || [
         p.headers?.["set-cookie"],
