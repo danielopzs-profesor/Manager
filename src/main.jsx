@@ -1057,7 +1057,7 @@ function App() {
                     <div className="toolbar">
                       <input
                         aria-label="Buscar profesor"
-                        placeholder="Buscar nombre o nómina"
+                        placeholder="Buscar nombre o usuario"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                       />
