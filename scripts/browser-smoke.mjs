@@ -10,7 +10,7 @@ const dir = await mkdtemp(path.join(os.tmpdir(), "arte-browser-"));
 const file = path.join(dir, "smoke.xlsx");
 const store = new Store(file);
 await store.init();
-await store.mutate(() => fixture());
+await store.mutate(() => { const data = fixture(); data.academic.participaciones[0].porcentaje = 25; return data; });
 const { app, close } = await createApp({
   env: {
     EXCEL_PATH: file,
@@ -74,6 +74,14 @@ try {
   await dialog.getByRole("button", { name: "Guardar cambios" }).click();
   await dialog.waitFor({ state: "hidden" });
   await page.getByRole("heading", { name: "Ana Ejemplo" }).waitFor();
+  await page.getByRole("heading", { name: "Ana Ejemplo", exact: true }).locator("..")
+    .getByRole("button", { name: "Asignar unidad de formación", exact: true }).click();
+  await dialog.getByLabel("Oferta / grupo", { exact: true }).selectOption("O1");
+  assert.equal(await dialog.getByLabel("Profesor", { exact: true }).inputValue(), "L004");
+  assert.equal(await dialog.getByLabel("Responsabilidad (%)", { exact: true }).inputValue(), "25");
+  await dialog.getByRole("button", { name: "Guardar cambios" }).click();
+  await dialog.waitFor({ state: "hidden" });
+
   await page
     .getByRole("heading", { name: "Mariana Torres", exact: true })
     .locator("..")
@@ -86,6 +94,12 @@ try {
   await dialog.waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "Ofertas", exact: true }).click();
   await page.getByRole("button", { name: "Ver asignación →" }).first().click();
+  await page.locator(".record").filter({ hasText: "09:00-13:00" })
+    .getByRole("button", { name: "Editar", exact: true }).click();
+  await dialog.getByLabel("Ana Ejemplo", { exact: true }).check();
+  await dialog.getByRole("button", { name: "Guardar cambios" }).click();
+  await dialog.waitFor({ state: "hidden" });
+
   await page
     .getByRole("button", { name: "Publicar oferta", exact: true })
     .click();

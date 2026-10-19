@@ -62,3 +62,13 @@ Si aparece «La programación cambió», otro usuario guardó primero. Cierra el
 - La clave se exige única dentro del semestre; puede reutilizarse en otro semestre.
 - Los porcentajes tienen máximo dos decimales; las UDC se muestran hasta cuatro.
 - La distribución por segmento muestra horas de sesión, sin inventar un tope de UDC por periodo.
+
+## Asignar una UF a un profesor
+
+1. Crea la UF en Unidades de formación y su oferta / grupo en Ofertas, con semestre, clave, duración y UDC.
+2. En Profesores, pulsa **Asignar unidad de formación** en la tarjeta del docente.
+3. Selecciona la oferta / grupo: muestra nombre de UF, grupo, clave y periodos. Captura su responsabilidad; se propone el porcentaje disponible y se muestran las UDC proporcionales.
+4. Guarda. También puedes comenzar desde **Ofertas → Asignar profesor**.
+5. En Ver asignación, completa profesores hasta 100 %, coordinación si es bloque y sesiones con sus docentes. Revisa la carga semestral y publica la oferta.
+
+Guardar una asignación devuelve la oferta a borrador para revisión. Solo el administrador puede asignar; el rol Consulta mantiene acceso de lectura.

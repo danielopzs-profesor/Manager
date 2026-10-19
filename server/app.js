@@ -226,7 +226,7 @@ export async function createApp({
   app.get("/api/config", (req, res) =>
     res.json({
       production,
-      version: "3.3.3",
+      version: "3.3.4",
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,

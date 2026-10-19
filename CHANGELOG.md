@@ -1,3 +1,9 @@
+## 3.3.4
+
+- Accesos directos para asignar UF desde Profesores y profesores desde Ofertas.
+- Selector de grupos con nombre de UF, clave y periodos; porcentaje disponible y vista de UDC proporcionales.
+- Etiquetas accesibles en los campos del editor.
+
 ## 3.3.2
 
 - Formulario único de usuario y contraseña sin selector de perfil. El servidor determina los permisos a partir de la cuenta autenticada.

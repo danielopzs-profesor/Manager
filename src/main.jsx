@@ -297,9 +297,12 @@ function App() {
             Ver asignación →
           </button>
           {admin && (
-            <button className="plain" onClick={() => open("ofertas", o)}>
-              Editar
-            </button>
+            <>
+              <button className="secondary" onClick={() => open("participaciones", { oferta: o.id })}>
+                Asignar profesor
+              </button>
+              <button className="plain" onClick={() => open("ofertas", o)}>Editar</button>
+            </>
           )}
         </div>
       </article>
@@ -366,7 +369,7 @@ function App() {
               className="secondary"
               onClick={() => open("participaciones", { oferta: o.id })}
             >
-              + Profesor
+              Asignar profesor
             </button>
           )}
         </div>
@@ -598,6 +601,9 @@ function App() {
         )}
         {admin && (
           <div className="buttons">
+            <button onClick={() => open("participaciones", { profesor: p.id })}>
+              Asignar unidad de formación
+            </button>
             <button className="secondary" onClick={() => open("profesores", p)}>
               Editar
             </button>
@@ -1499,6 +1505,7 @@ function App() {
             {modal.kind === "edit" ? (
               <Editor
                 modal={modal}
+                semestre={sem}
                 db={db}
                 busy={busy || !online}
                 onSave={(item) =>
@@ -1747,7 +1754,7 @@ function App() {
     </>
   );
 }
-function Editor({ modal, db, busy, onSave }) {
+function Editor({ modal, db, semestre, busy, onSave }) {
   const { collection, item } = modal;
   const [values, setValues] = useState({ ...item });
   const change = (key, v) => setValues((x) => ({ ...x, [key]: v }));
@@ -1767,6 +1774,7 @@ function Editor({ modal, db, busy, onSave }) {
       {label}
       {options ? (
         <select
+          aria-label={label}
           required={required}
           value={values[key] ?? defaultValue}
           onChange={(e) => change(key, e.target.value)}
@@ -1783,6 +1791,7 @@ function Editor({ modal, db, busy, onSave }) {
         </select>
       ) : (
         <input
+          aria-label={label}
           required={required}
           readOnly={readOnly}
           type={type}
@@ -1804,6 +1813,10 @@ function Editor({ modal, db, busy, onSave }) {
   const participants = db.participaciones.filter(
     (p) => p.oferta === values.oferta,
   );
+  const remaining = Math.max(0, 100 - participants
+    .filter((p) => p.id !== item.id)
+    .reduce((sum, p) => sum + Number(p.porcentaje), 0));
+  const assignmentOffers = db.ofertas.filter((o) => o.semestre === semestre || o.id === values.oferta);
   const multi = (key, label, opts) => (
     <fieldset>
       <legend>{label}</legend>
@@ -1845,7 +1858,7 @@ function Editor({ modal, db, busy, onSave }) {
           defaults.periodos = "P1";
           defaults.udc = db.ufs.find((u) => u.id === values.uf)?.udc ?? 0;
         }
-        if (collection === "participaciones") defaults.porcentaje = 100;
+        if (collection === "participaciones") defaults.porcentaje = remaining;
         if (collection === "coordinaciones") defaults.udc = 0;
         onSave({ ...defaults, ...values, id: item.id || values.id });
       }}
@@ -1933,17 +1946,28 @@ function Editor({ modal, db, busy, onSave }) {
       )}
       {["participaciones", "coordinaciones", "sesiones"].includes(collection) &&
         field("oferta", "Oferta / grupo", {
-          options: options("ofertas"),
+          options: assignmentOffers.map((o) => ({
+            value: o.id,
+            label: `${db.ufs.find((u) => u.id === o.uf)?.nombre || o.uf} · Grupo ${o.grupo || "—"} · Clave ${o.clave} · ${o.periodos}`,
+          })),
           readOnly: !!item.id,
         })}
       {["participaciones", "coordinaciones"].includes(collection) &&
         field("profesor", "Profesor", { options: options("profesores") })}
-      {collection === "participaciones" &&
-        field("porcentaje", "Responsabilidad (%)", {
-          type: "number",
-          defaultValue: 100,
-          hint: "Hasta dos decimales. Debe sumar 100 % por grupo antes de publicar.",
-        })}
+      {collection === "participaciones" && (
+        <>
+          {!assignmentOffers.length && <p role="status">Primero crea una oferta / grupo en Ofertas para este semestre.</p>}
+          {field("porcentaje", "Responsabilidad (%)", {
+            type: "number",
+            defaultValue: remaining,
+            hint: "El total debe sumar 100 % por grupo antes de publicar. La responsabilidad se mantiene durante toda la UF.",
+          })}
+          {selected && <p className="muted">
+            Disponible: {fmt(remaining)} % · Carga de esta asignación: {fmt(Number(selected.udc) * Number(values.porcentaje ?? remaining) / 100)} UDC.
+            Guardar deja la oferta en borrador para revisión.
+          </p>}
+        </>
+      )}
       {collection === "coordinaciones" &&
         field("udc", "UDC adicionales de coordinación", {
           type: "number",
