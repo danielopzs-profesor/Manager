@@ -15,6 +15,7 @@ const labels = {
 };
 const days = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const names = {
+  salones: "Salón",
   profesores: "Profesor",
   ufs: "Unidad de formación",
   semestres: "Semestre",
@@ -94,6 +95,7 @@ function App() {
     [status, setStatus] = useState(""),
     [acceptance, setAcceptance] = useState(""),
     [type, setType] = useState(""),
+    [roomFilter, setRoomFilter] = useState(""),
     [segment, setSegment] = useState("P1"),
     [view, setView] = useState("Semana"),
     [detail, setDetail] = useState(""),
@@ -239,13 +241,14 @@ function App() {
         "Profesores",
         "Unidades de formación",
         "Ofertas",
+        "Salones",
         "Solicitudes",
         "Usuarios y permisos",
         "Historial",
         "Datos",
       ]
     : me?.role === "consulta"
-      ? ["Inicio", "Profesores", "Unidades de formación", "Ofertas"]
+      ? ["Inicio", "Profesores", "Unidades de formación", "Ofertas", "Salones"]
       : ["Inicio", "Mi horario", "Mis respuestas"];
   const changeTab = (t) => {
     setTab(t);
@@ -609,6 +612,10 @@ function App() {
         )}
         {admin && (
           <div className="buttons">
+            <button className="secondary" onClick={() => {
+              const account = db.admins.find((a) => a.profesor === p.id) || db.admins.find((a) => a.id.toLowerCase() === p.correo.toLowerCase());
+              setModal({ kind: "admin", item: account, profesor: p.id, suggestedId: p.correo, suggestedNombre: p.nombre, revision: db.revision });
+            }}>Cuenta administrativa</button>
             <button onClick={() => open("participaciones", { profesor: p.id })}>
               Asignar unidad de formación
             </button>
@@ -1297,6 +1304,42 @@ function App() {
                     ))}
                   </>
                 )}
+                {tab === "Salones" && readAll && (
+                  <>
+                    <div className="toolbar">
+                      <select aria-label="Filtrar salón" value={roomFilter} onChange={(e) => setRoomFilter(e.target.value)}>
+                        <option value="">Todos los salones</option>
+                        {db.salones.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+                      </select>
+                      <select aria-label="Periodo del mapa" value={segment} onChange={(e) => setSegment(e.target.value)}>
+                        {segments.map((s) => <option key={s} value={s}>{labels[s]}</option>)}
+                      </select>
+                      {admin && <button onClick={() => open("salones")}>+ Salón</button>}
+                    </div>
+                    <p>Mapa de ocupación del semestre: selecciona un periodo. Los borradores también reservan espacio.</p>
+                    {!db.salones.length && <p>Registra los salones con su capacidad y disponibilidad para controlar el aforo.</p>}
+                    {db.salones.filter((r) => !roomFilter || r.id === roomFilter).map((r) => (
+                      <section className="panel" key={r.id}>
+                        <h2>{r.nombre} · {r.id}</h2>
+                        <p>Capacidad: {r.capacidad} alumnos · {r.dias} · {r.horario}</p>
+                        {admin && <div className="buttons">
+                          <button className="secondary" onClick={() => open("salones", r)}>Editar salón</button>
+                          <button className="secondary" onClick={() => open("sesiones", { aula: r.id })}>Asignar clase</button>
+                          <button className="danger" onClick={() => remove("salones", r)}>Eliminar salón</button>
+                        </div>}
+                        <div className="week">
+                          {days.map((day) => <div className="day" key={day}>
+                            <h3>{day}</h3>
+                            {sessions.filter((s) => s.aula === r.id && split(s.segmentos).includes(segment) && split(s.dias).includes(day)).sort((a,b) => a.horario.localeCompare(b.horario)).map((s) => {
+                              const o = find("ofertas", s.oferta);
+                              return <article className="record" key={s.id}><div><b>{s.horario} · {u(o)?.nombre}</b><p>Grupo {o.grupo} · {o.alumnos || "Sin aforo capturado"} alumnos · {o.estado}</p><small>{split(s.profesores).map((id) => find("profesores", id)?.nombre || id).join(" / ")}</small></div></article>;
+                            })}
+                          </div>)}
+                        </div>
+                      </section>
+                    ))}
+                  </>
+                )}
                 {tab === "Mi horario" && calendarView()}
                 {tab === "Solicitudes" && (
                   <section className="panel">
@@ -1712,7 +1755,7 @@ function App() {
                       <input
                         name="id"
                         required
-                        defaultValue={modal.item?.id}
+                        defaultValue={modal.item?.id || modal.suggestedId}
                         readOnly={!!modal.item}
                       />
                     </label>
@@ -1721,7 +1764,7 @@ function App() {
                       <input
                         name="nombre"
                         required
-                        defaultValue={modal.item?.nombre}
+                        defaultValue={modal.item?.nombre || modal.suggestedNombre}
                       />
                     </label>
                     <label>
@@ -1740,7 +1783,7 @@ function App() {
                     </label>
                     <label>
                       Profesor vinculado (opcional, solo administradores)
-                      <select name="profesor" defaultValue={modal.item?.profesor || ""}>
+                      <select name="profesor" defaultValue={modal.item?.profesor || modal.profesor || ""}>
                         <option value="">Sin vinculación docente</option>
                         {db.profesores.map((p) => <option key={p.id} value={p.id}>{p.nombre} · {p.id}</option>)}
                       </select>
@@ -1906,17 +1949,17 @@ function Editor({ modal, db, semestre, busy, onSave }) {
         onSave({ ...defaults, ...values, id: item.id || values.id });
       }}
     >
-      {["profesores", "ufs", "semestres"].includes(collection) &&
+      {["profesores", "ufs", "semestres", "salones"].includes(collection) &&
         field(
           "id",
           collection === "profesores"
             ? "Usuario"
             : collection === "ufs"
               ? "Clave UF"
-              : "Identificador del semestre",
+              : collection === "salones" ? "Clave del salón" : "Identificador del semestre",
           { readOnly: !!item.id },
         )}
-      {["profesores", "ufs", "semestres"].includes(collection) &&
+      {["profesores", "ufs", "semestres", "salones"].includes(collection) &&
         field("nombre", "Nombre")}
       {collection === "profesores" && (
         <>
@@ -1940,6 +1983,11 @@ function Editor({ modal, db, semestre, busy, onSave }) {
           })}
         </>
       )}
+      {collection === "salones" && <>
+        {field("capacidad", "Capacidad de alumnos", { type: "number", hint: "Número entero mayor a cero." })}
+        {multi("dias", "Días de trabajo", days)}
+        {field("horario", "Horario de trabajo", { hint: "Formato de 24 horas: 07:00-22:00. Un rango por día seleccionado." })}
+      </>}
       {collection === "semestres" &&
         field("inicio", "Lunes de inicio del semestre", {
           type: "date",
@@ -1947,6 +1995,7 @@ function Editor({ modal, db, semestre, busy, onSave }) {
         })}
       {collection === "ofertas" && (
         <>
+          {field("alumnos", "Número de alumnos del grupo", { type: "number", defaultValue: 0, hint: "Requerido antes de publicar clases en salones registrados." })}
           {field("clave", "Clave única de la oferta", {
             hint: "Independiente del grupo. Debe ser única dentro del semestre.",
           })}
@@ -2042,7 +2091,10 @@ function Editor({ modal, db, semestre, busy, onSave }) {
           {field("horario", "Horario", {
             hint: "Formato de 24 horas: 09:00-13:00",
           })}
-          {field("aula", "Aula")}
+          {field("aula", "Aula", db.salones.length ? { options: [
+            ...db.salones.map((r) => ({ value:r.id, label:`${r.nombre} · ${r.capacidad} alumnos · ${r.dias} ${r.horario}` })),
+            ...(values.aula && !db.salones.some((r) => r.id === values.aula) ? [{value:values.aula, label:values.aula + " (pendiente de registrar)"}] : []),
+          ] } : { hint: "Registra el salón en Salones para controlar capacidad y disponibilidad." })}
         </>
       )}
       <button className="primary" disabled={busy}>

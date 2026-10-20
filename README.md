@@ -116,3 +116,9 @@ La prueba de navegador usa una base Excel temporal, arranca un servidor en 31879
 En **Usuarios y permisos → + Usuario**, selecciona **Consulta · solo lectura**. Esta cuenta puede consultar todos los catálogos, ofertas (incluidos borradores), docentes, cargas y horarios. No puede editar, eliminar, publicar, aprobar, responder por profesores, compartir ofertas, administrar usuarios, exportar ni restaurar respaldos. No recibe contraseñas, historial ni comentarios privados de solicitudes. Inicia sesión con usuario y contraseña; el sistema reconoce el rol automáticamente. Las cuentas anteriores conservan su rol de administrador. Cambiar el rol de una cuenta invalida sus sesiones anteriores. Siempre debe permanecer al menos un administrador.
 
 El acceso principal muestra únicamente Usuario y Contraseña. Para profesores, el usuario es su correo institucional; para administradores y consulta, su cuenta registrada. El servidor determina el rol y no acepta que el navegador lo elija.
+
+### Salones (versión 3.5)
+
+Catálogo de capacidad y horario de trabajo, asignación desde sesiones o desde Salones y mapa de ocupación por segmento del semestre. Captura alumnos en cada grupo para validar aforo antes de publicar. Los salones registrados bloquean empalmes y sesiones fuera de disponibilidad; las aulas anteriores se conservan para su clasificación. El Excel incorpora salones y alumnos; las plantillas anteriores siguen siendo compatibles.
+
+La rama desarrollo/salones-y-perfiles se prepara para validación local antes de integrar a main. Usa Neon de pruebas si no deseas afectar datos publicados.

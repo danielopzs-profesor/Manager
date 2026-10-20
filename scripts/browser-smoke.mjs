@@ -10,7 +10,7 @@ const dir = await mkdtemp(path.join(os.tmpdir(), "arte-browser-"));
 const file = path.join(dir, "smoke.xlsx");
 const store = new Store(file);
 await store.init();
-await store.mutate(() => { const data = fixture(); data.academic.participaciones[0].porcentaje = 25; return data; });
+await store.mutate(() => { const data = fixture(); data.academic.participaciones[0].porcentaje = 25; data.academic.ofertas[0].alumnos = 25; return data; });
 const { app, close } = await createApp({
   env: {
     EXCEL_PATH: file,
@@ -92,11 +92,21 @@ try {
     .fill("browser-professor-password");
   await dialog.getByRole("button", { name: "Confirmar", exact: true }).click();
   await dialog.waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "Salones", exact: true }).click();
+  await page.getByRole("button", { name: "+ Salón", exact: true }).click();
+  await dialog.getByLabel("Clave del salón", {exact:true}).fill("R101");
+  await dialog.getByLabel("Nombre", {exact:true}).fill("Taller de prueba");
+  await dialog.getByLabel("Capacidad de alumnos", {exact:true}).fill("30");
+  await dialog.getByLabel("Lun", {exact:true}).check();
+  await dialog.getByLabel("Horario de trabajo", {exact:true}).fill("08:00-18:00");
+  await dialog.getByRole("button", {name:"Guardar cambios", exact:true}).click();
+  await dialog.waitFor({state:"hidden"});
   await page.getByRole("button", { name: "Ofertas", exact: true }).click();
   await page.getByRole("button", { name: "Ver asignación →" }).first().click();
   await page.locator(".record").filter({ hasText: "09:00-13:00" })
     .getByRole("button", { name: "Editar", exact: true }).click();
   await dialog.getByLabel("Ana Ejemplo", { exact: true }).check();
+  await dialog.getByLabel("Aula", {exact:true}).selectOption("R101");
   await dialog.getByRole("button", { name: "Guardar cambios" }).click();
   await dialog.waitFor({ state: "hidden" });
 
@@ -104,6 +114,14 @@ try {
     .getByRole("button", { name: "Publicar oferta", exact: true })
     .click();
   await page.getByText("Oferta publicada. Ya puedes compartirla.").waitFor();
+  await page.getByRole("button", {name:"Salones",exact:true}).click();
+  await page.getByRole("heading", {name:"Taller de prueba · R101",exact:true}).waitFor();
+  await page.getByText("09:00-13:00 · Laboratorio",{exact:true}).waitFor();
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),false,"Mapa de salones móvil desbordado");
+  await page.screenshot({path:"/tmp/arte-screens/salones-mobile.png",fullPage:true});
+  await page.setViewportSize({width:1440,height:1050});
+
   await page
     .getByRole("button", { name: "Usuarios y permisos", exact: true })
     .click();

@@ -81,3 +81,17 @@ Guardar una asignación devuelve la oferta a borrador para revisión. Solo el ad
 4. Otro administrador debe aprobar tu sobrecarga. La cuenta conserva sus permisos administrativos.
 
 Cada profesor puede vincularse a una sola cuenta administrativa. El vínculo se puede retirar seleccionando Sin vinculación docente; no se eliminan sus asignaciones. Consulta no obtiene permisos de respuesta docente. Una importación debe conservar los profesores vinculados o corregir primero los vínculos. No se crean vínculos automáticamente por nombre ni correo.
+
+## Salones y ocupación
+
+1. En Salones, usa + Salón. Define clave única, nombre, capacidad entera, días y horario de trabajo (por ejemplo 08:00-20:00). En esta versión se usa un rango común para los días seleccionados.
+2. En Ofertas, edita el grupo y captura Número de alumnos. Es necesario para publicar sesiones en un salón registrado.
+3. En el detalle del grupo, edita o crea una sesión y elige su Aula del catálogo. También puedes comenzar desde Salones → Asignar clase y elegir oferta/grupo y docentes.
+4. El sistema impide exceder la capacidad, usar días/horas no disponibles o reservar el mismo salón en horarios coincidentes del mismo semestre y segmento. Los borradores también reservan espacio; se permiten sesiones contiguas y reservas en periodos distintos.
+5. En Salones selecciona periodo y salón para revisar su mapa semanal de ocupación. Consulta tiene lectura; solo Administración puede modificar. No es un plano arquitectónico.
+
+Las aulas antiguas se conservan como pendientes de registrar; su capacidad no se puede verificar hasta registrarlas/asignarlas. No se puede eliminar un salón con sesiones asignadas. Los archivos Excel nuevos incluyen la hoja salones y alumnos al final de ofertas. Al importar una plantilla anterior sin salones se conserva el catálogo actual; revisa el número de alumnos antes de publicar.
+
+## Pruebas locales de la versión 3.5
+
+En GitHub Desktop, Fetch origin y selecciona desarrollo/salones-y-perfiles. Detén el servidor, ejecuta npm ci y luego npm run dev en la misma terminal donde configuraste Neon. Usa una rama de Neon de pruebas: cambiar de rama de código no separa los datos. Esta rama no se incorpora automáticamente a main.

@@ -1,3 +1,11 @@
+## 3.5.0
+
+- Catálogo de salones con clave, nombre, capacidad y días/horario de trabajo.
+- Mapa de ocupación por salón, semestre y periodo; asignación de clases desde el salón.
+- Número de alumnos por grupo; validación de aforo, disponibilidad y empalmes en salones registrados.
+- Conserva aulas anteriores; Excel incorpora salones y alumnos y admite plantillas anteriores.
+- Acceso desde Profesores para vincular/crear cuentas administrativas sin duplicar docentes; conserva Mi carga académica.
+
 ## 3.4.0
 
 - Vinculación explícita entre una cuenta administrativa y un profesor, sin duplicar asignaciones.

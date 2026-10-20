@@ -10,7 +10,7 @@ const has = (xs, id) => xs.find((x) => x.id === id);
 const nonempty = (v) => typeof v === "string" && v.trim().length > 0;
 const number = (v, min = 0) => Number.isFinite(v) && v >= min;
 export function migrateAcademic(db) {
-  if (db.academic) return db.academic;
+  if (db.academic) { db.academic.salones ||= []; return db.academic; }
   const a = {
     version: 2,
     revision: 1,
@@ -30,6 +30,7 @@ export function migrateAcademic(db) {
     ofertas: [],
     participaciones: [],
     sesiones: [],
+    salones: [],
     coordinaciones: [],
     sobrecargas: [],
     admins: [],
@@ -267,6 +268,18 @@ export function groupBase(o) {
     null
   );
 }
+export function roomIssues(a, session) {
+  const room = (a.salones || []).find((r) => r.id === session.aula);
+  if (!room) return [];
+  if (typeof session.horario !== "string") return ["Horario de sesión inválido"];
+  const o = a.ofertas.find((o) => o.id === session.oferta);
+  const issues = [];
+  if (list(session.dias).some((d) => !list(room.dias).includes(d)) ||
+      session.horario.slice(0,5) < room.horario.slice(0,5) ||
+      session.horario.slice(6) > room.horario.slice(6)) issues.push(`La sesión está fuera del horario de trabajo de ${room.nombre}.`);
+  if (Number(o?.alumnos || 0) > room.capacidad) issues.push(`El grupo excede la capacidad de ${room.nombre} (${room.capacidad}).`);
+  return issues;
+}
 export function publishIssues(a, o) {
   const errors = [];
   const parts = a.participaciones.filter((p) => p.oferta === o.id);
@@ -322,9 +335,14 @@ export function publishIssues(a, o) {
     )
   )
     errors.push("Hay conflictos de profesor o aula.");
+  for (const session of a.sesiones.filter((s) => s.oferta === o.id)) {
+    errors.push(...roomIssues(a, session));
+    if ((a.salones || []).some((r) => r.id === session.aula) && !(Number(o.alumnos) > 0)) errors.push("Captura el número de alumnos del grupo para verificar el aforo.");
+  }
   return [...new Set(errors)];
 }
 export function validateAcademic(a) {
+  a.salones ||= [];
   for (const account of a.admins || [])
     if (
       account.role !== undefined &&
@@ -339,6 +357,7 @@ export function validateAcademic(a) {
     "participaciones",
     "sesiones",
     "coordinaciones",
+    "salones",
     "sobrecargas",
     "admins",
     "auditoria",
@@ -351,6 +370,14 @@ export function validateAcademic(a) {
       ids.add(r.id);
     }
   }
+  const roomIds = new Set();
+  for (const r of a.salones || []) {
+    if (!nonempty(r.id) || roomIds.has(r.id.trim().toLowerCase()) || !nonempty(r.nombre) || !Number.isInteger(r.capacidad) || r.capacidad < 1 ||
+        !/^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$/.test(r.horario) || r.horario.slice(0,5) >= r.horario.slice(6) ||
+        !list(r.dias).length || list(r.dias).some((d) => !DAYS.includes(d))) fail("Salón inválido: revisa clave, capacidad, días y horario");
+    roomIds.add(r.id.trim().toLowerCase());
+  }
+  for (const o of a.ofertas) if (o.alumnos !== undefined && o.alumnos !== "" && (!Number.isInteger(Number(o.alumnos)) || Number(o.alumnos) < 0)) fail("Número de alumnos inválido");
   const linked = new Set();
   for (const account of a.admins || []) {
     if (!account.profesor) continue;
@@ -458,6 +485,7 @@ export function validateAcademic(a) {
   }
   for (const s of a.sesiones) {
     const o = has(a.ofertas, s.oferta);
+    if (roomIssues(a, s).length) fail(roomIssues(a, s).join(" "));
     if (
       !o ||
       !nonempty(s.aula) ||
@@ -479,6 +507,9 @@ export function validateAcademic(a) {
       list(s.dias).some((d) => ["Sáb", "Dom"].includes(d))
     )
       fail("Las intensivas se programan de lunes a viernes");
+  }
+  for (const sem of a.semestres) {
+    for (const c of conflicts(a, sem.id)) if (c.aula && (a.salones || []).some((r) => r.id.toLowerCase() === c.aula.trim().toLowerCase())) fail(`Empalme de salón ${c.aula}: ${c.oferta1} y ${c.oferta2}`);
   }
   return a;
 }
@@ -503,21 +534,22 @@ export function diffAcademic(before, after) {
     "participaciones",
     "sesiones",
     "coordinaciones",
+    "salones",
     "sobrecargas",
     "admins",
   ]) {
     const ids = new Set([
-      ...before[k].map((r) => r.id),
-      ...after[k].map((r) => r.id),
+      ...(before[k] || []).map((r) => r.id),
+      ...(after[k] || []).map((r) => r.id),
     ]);
     for (const id of ids) {
-      const old = before[k].find((r) => r.id === id),
-        next = after[k].find((r) => r.id === id);
+      const old = (before[k] || []).find((r) => r.id === id),
+        next = (after[k] || []).find((r) => r.id === id);
       if (JSON.stringify(old) === JSON.stringify(next)) continue;
       const clean = (r) =>
         r
           ? k === "admins"
-            ? { id: r.id, nombre: r.nombre, role: r.role || "admin" }
+            ? { id: r.id, nombre: r.nombre, role: r.role || "admin", profesor: r.profesor || "" }
             : k === "profesores"
               ? Object.fromEntries(
                   Object.entries(r).filter(([key]) => key !== "passwordHash"),
@@ -567,6 +599,7 @@ export function invalidate(a, before) {
 }
 export function publicAcademic(a, session) {
   const copy = structuredClone(a);
+  copy.salones ||= [];
   copy.profesores = copy.profesores.map(({ passwordHash, ...p }) => ({
     ...p,
     hasPassword: !!passwordHash,

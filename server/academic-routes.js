@@ -84,7 +84,7 @@ export function academicRoutes(app, { store, auth, admin }) {
       sheets[collection].map((key) => [key, item[key] ?? ""]),
     );
     clean.id = String(clean.id || randomUUID());
-    for (const key of ["udc", "duracion", "porcentaje"])
+    for (const key of ["udc", "duracion", "porcentaje", "capacidad", "alumnos"])
       if (key in clean) clean[key] = Number(clean[key]);
     if (collection === "ofertas") clean.estado = "Borrador";
     if (collection === "participaciones") {
@@ -95,6 +95,7 @@ export function academicRoutes(app, { store, auth, admin }) {
     req.body.detail = `Registro ${clean.id}`;
     await change(req, (a) => {
       const old = a[collection].find((r) => r.id === clean.id);
+      if (collection === "sesiones" && a.salones.length && (!old || old.aula !== clean.aula) && !a.salones.some((r) => r.id === clean.aula)) throw Error("Selecciona un salón registrado");
       if (
         collection === "participaciones" &&
         old?.oferta !== undefined &&
@@ -122,6 +123,7 @@ export function academicRoutes(app, { store, auth, admin }) {
         for (const k of ["participaciones", "coordinaciones", "sesiones"])
           a[k] = a[k].filter((r) => r.oferta !== id);
       }
+      if (collection === "salones" && a.sesiones.some((s) => s.aula === id)) throw Error("El salón tiene sesiones asignadas; reasígnalas antes de eliminarlo");
       a[collection] = a[collection].filter((r) => r.id !== id);
     });
     res.json({ ok: true });

@@ -229,7 +229,7 @@ export async function createApp({
   app.get("/api/config", (req, res) =>
     res.json({
       production,
-      version: "3.4.0",
+      version: "3.5.0",
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,
