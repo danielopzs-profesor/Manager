@@ -95,3 +95,13 @@ Las aulas antiguas se conservan como pendientes de registrar; su capacidad no se
 ## Pruebas locales de la versión 3.5
 
 En GitHub Desktop, Fetch origin y selecciona desarrollo/salones-y-perfiles. Detén el servidor, ejecuta npm ci y luego npm run dev en la misma terminal donde configuraste Neon. Usa una rama de Neon de pruebas: cambiar de rama de código no separa los datos. Esta rama no se incorpora automáticamente a main.
+
+## Feedback de pruebas: versión 3.6
+
+- Los nuevos salones se capturan con Edificio y Número de salón, por ejemplo CEDES y 319. El nombre se genera como CEDES-319; las asignaciones utilizan una referencia interna estable. Dos registros no pueden compartir edificio/número, sin distinguir mayúsculas. Los salones anteriores se conservan y se pueden completar al editarlos.
+- En Editar fechas elige mes, año y un lunes habilitado. Los periodos se calculan automáticamente. Para sesiones y salones selecciona hora de inicio y fin; el fin debe ser posterior al inicio del mismo día.
+- Inicio muestra profesores que han aceptado todas sus participaciones publicadas; el denominador solo incluye docentes con participaciones publicadas en el semestre. Los profesores con borradores o solo coordinación no se cuentan como pendientes de aceptación docente. Los botones llevan a Profesores con el filtro aplicado.
+- La disponibilidad de salones corresponde a horas libres de una semana tipo en el periodo seleccionado, incluyendo reservas en borrador. No significa cupo de estudiantes ni disponibilidad diaria de todo el semestre. Puedes ir desde Inicio a Salones conservando el periodo elegido.
+- En Préstamos → + Préstamo registra profesor, semestre, departamento y UDC. Carga total = docencia local + intensivas + coordinación + préstamos. Disponible aquí = tope semestral menos carga total, con mínimo cero. No registres como préstamo una carga que ya está contabilizada en un grupo local.
+- Cambiar las UDC prestadas altera la carga y deja de validar aprobaciones de sobrecarga anteriores. Las fechas contractuales y horarios externos no se calculan con préstamos porque solo se registran UDC semestrales.
+- Excel ahora exporta nueve hojas (incluida prestamos); salones agrega edificio y numero. Las plantillas anteriores siguen siendo compatibles y conservan los préstamos existentes si no incluyen esa hoja.

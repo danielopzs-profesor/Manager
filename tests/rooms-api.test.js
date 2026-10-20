@@ -16,8 +16,13 @@ test('API de salones: guarda, bloquea empalmes/aforo y no elimina salones ocupad
  const change=async(url,body)=>req(url,{...body,revision:(await data()).revision});
  try{
   const login=await req('/login',{password:'initial-password'});cookie=login.headers.get('set-cookie').split(';')[0];
-  assert.equal((await change('/academic/save',{collection:'salones',item:{id:'R1',nombre:'Taller',capacidad:30,dias:'Lun',horario:'08:00-18:00'}})).status,200);
+  assert.equal((await change('/academic/save',{collection:'salones',item:{id:'R1',nombre:'Taller',edificio:'CEDES',numero:'319',capacidad:30,dias:'Lun',horario:'08:00-18:00'}})).status,200);
   let a=await data();assert.equal(a.salones.length,1);
+  assert.equal(a.salones[0].nombre,'CEDES-319');
+  assert.equal((await change('/academic/save',{collection:'salones',item:{id:'R2',nombre:'Duplicado',edificio:'cedes',numero:'319',capacidad:30,dias:'Lun',horario:'08:00-18:00'}})).status,400);
+  assert.equal((await change('/academic/save',{collection:'prestamos',item:{id:'P1',profesor:'L001',semestre:'FJ27',departamento:'Diseño',udc:3,comentarios:''}})).status,200);
+  assert.equal((await data()).cargas.find(c=>c.profesor==='L001').total,4.5);
+
   assert.equal((await change('/academic/save',{collection:'ofertas',item:{...a.ofertas[0],alumnos:25}})).status,200);
   a=await data();const session={...a.sesiones[0],aula:'R1'};
   assert.equal((await change('/academic/save',{collection:'sesiones',item:session})).status,200);

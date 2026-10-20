@@ -10,7 +10,7 @@ const has = (xs, id) => xs.find((x) => x.id === id);
 const nonempty = (v) => typeof v === "string" && v.trim().length > 0;
 const number = (v, min = 0) => Number.isFinite(v) && v >= min;
 export function migrateAcademic(db) {
-  if (db.academic) { db.academic.salones ||= []; return db.academic; }
+  if (db.academic) { db.academic.salones ||= []; db.academic.prestamos ||= []; return db.academic; }
   const a = {
     version: 2,
     revision: 1,
@@ -31,6 +31,7 @@ export function migrateAcademic(db) {
     participaciones: [],
     sesiones: [],
     salones: [],
+    prestamos: [],
     coordinaciones: [],
     sobrecargas: [],
     admins: [],
@@ -112,7 +113,9 @@ export function workload(a, profesor, semestre) {
     (c) => c.profesor === profesor && ids.has(c.oferta),
   ))
     coordinacion += c.udc;
-  const total = round(docencia + intensivas + coordinacion);
+  const prestamos = round((a.prestamos || []).filter((p) => p.profesor === profesor && p.semestre === semestre).reduce((sum,p) => sum + p.udc,0));
+  const cargaLocal = round(docencia + intensivas + coordinacion);
+  const total = round(cargaLocal + prestamos);
   const max = limit(has(a.profesores, profesor) || {});
   const fingerprint = loadFingerprint(a, profesor, semestre);
   const approval = a.sobrecargas.find(
@@ -127,6 +130,9 @@ export function workload(a, profesor, semestre) {
     intensivas: round(intensivas),
     coordinacion: round(coordinacion),
     total,
+    cargaLocal,
+    prestamos,
+    disponible: max === null ? null : round(Math.max(0,max-total)),
     max,
     estado:
       max === null
@@ -145,6 +151,7 @@ export function loadFingerprint(a, profesor, semestre) {
   );
   const data = {
     tipo: has(a.profesores, profesor)?.tipo,
+    prestamos: (a.prestamos || []).filter((p) => p.profesor === profesor && p.semestre === semestre).map((p)=>[p.id,p.udc]).sort(),
     ofertas: a.ofertas
       .filter((o) => ids.has(o.id))
       .filter(
@@ -276,8 +283,8 @@ export function roomIssues(a, session) {
   const issues = [];
   if (list(session.dias).some((d) => !list(room.dias).includes(d)) ||
       session.horario.slice(0,5) < room.horario.slice(0,5) ||
-      session.horario.slice(6) > room.horario.slice(6)) issues.push(`La sesión está fuera del horario de trabajo de ${room.nombre}.`);
-  if (Number(o?.alumnos || 0) > room.capacidad) issues.push(`El grupo excede la capacidad de ${room.nombre} (${room.capacidad}).`);
+      session.horario.slice(6) > room.horario.slice(6)) issues.push(`La sesión está fuera del horario de trabajo de ${room.nombre}: ${room.dias}, ${room.horario}. Elige uno de esos días y horas dentro de ese rango.`);
+  if (Number(o?.alumnos || 0) > room.capacidad) issues.push(`El grupo tiene ${o?.alumnos} alumnos y ${room.nombre} tiene capacidad para ${room.capacidad}. Selecciona un salón más grande o corrige el número de alumnos.`);
   return issues;
 }
 export function publishIssues(a, o) {
@@ -343,6 +350,7 @@ export function publishIssues(a, o) {
 }
 export function validateAcademic(a) {
   a.salones ||= [];
+  a.prestamos ||= [];
   for (const account of a.admins || [])
     if (
       account.role !== undefined &&
@@ -358,6 +366,7 @@ export function validateAcademic(a) {
     "sesiones",
     "coordinaciones",
     "salones",
+    "prestamos",
     "sobrecargas",
     "admins",
     "auditoria",
@@ -368,6 +377,18 @@ export function validateAcademic(a) {
       if (!nonempty(r.id) || ids.has(r.id))
         fail(`Identificador vacío o duplicado en ${key}`);
       ids.add(r.id);
+    }
+  }
+  for (const p of a.prestamos) {
+    if (!has(a.profesores,p.profesor) || !has(a.semestres,p.semestre) || !nonempty(p.departamento) || !number(p.udc,0.01)) fail("Préstamo inválido. Selecciona profesor y semestre, indica departamento y UDC mayores a cero.");
+  }
+  const roomPairs = new Set();
+  for (const r of a.salones) {
+    if (r.edificio || r.numero) {
+      if (!nonempty(r.edificio) || !nonempty(r.numero)) fail("Completa el edificio y el número de salón; por ejemplo CEDES y 319.");
+      const key = r.edificio.trim().toLowerCase()+"|"+r.numero.trim().toLowerCase();
+      if (roomPairs.has(key)) fail("Ya existe un salón en ese edificio con ese número. Edita el existente o elige otro número.");
+      roomPairs.add(key);
     }
   }
   const roomIds = new Set();
@@ -408,7 +429,7 @@ export function validateAcademic(a) {
         dateAdd(s.inicio, 0) !== s.inicio ||
         new Date(s.inicio + "T00:00:00Z").getUTCDay() !== 1)
     )
-      fail("El semestre debe comenzar un lunes válido");
+      fail("El semestre debe comenzar un lunes válido. Elige un lunes en el calendario; el sistema guardará la fecha automáticamente.");
   }
   const keys = new Set();
   for (const o of a.ofertas) {
@@ -509,7 +530,7 @@ export function validateAcademic(a) {
       fail("Las intensivas se programan de lunes a viernes");
   }
   for (const sem of a.semestres) {
-    for (const c of conflicts(a, sem.id)) if (c.aula && (a.salones || []).some((r) => r.id.toLowerCase() === c.aula.trim().toLowerCase())) fail(`Empalme de salón ${c.aula}: ${c.oferta1} y ${c.oferta2}`);
+    for (const c of conflicts(a, sem.id)) if (c.aula && (a.salones || []).some((r) => r.id.toLowerCase() === c.aula.trim().toLowerCase())) fail(`Empalme en ${a.salones.find((r)=>r.id.toLowerCase()===c.aula.trim().toLowerCase())?.nombre || c.aula}: grupos ${a.ofertas.find((o)=>o.id===c.oferta1)?.grupo || c.oferta1} y ${a.ofertas.find((o)=>o.id===c.oferta2)?.grupo || c.oferta2}. Cambia el salón, el día, la hora o el periodo de una de las sesiones.`);
   }
   return a;
 }
@@ -535,6 +556,7 @@ export function diffAcademic(before, after) {
     "sesiones",
     "coordinaciones",
     "salones",
+    "prestamos",
     "sobrecargas",
     "admins",
   ]) {
@@ -600,6 +622,7 @@ export function invalidate(a, before) {
 export function publicAcademic(a, session) {
   const copy = structuredClone(a);
   copy.salones ||= [];
+  copy.prestamos ||= [];
   copy.profesores = copy.profesores.map(({ passwordHash, ...p }) => ({
     ...p,
     hasPassword: !!passwordHash,
@@ -617,6 +640,7 @@ export function publicAcademic(a, session) {
     return copy;
   }
   const id = session.nomina;
+  copy.prestamos = copy.prestamos.filter((p) => p.profesor === id);
   copy.profesores = copy.profesores.filter((p) => p.id === id);
   const ids = new Set([
     ...copy.participaciones

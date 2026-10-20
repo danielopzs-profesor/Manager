@@ -1,3 +1,5 @@
+import { SemesterDatePicker, TimeRangePicker, explainError } from "./date-time.jsx";
+import { acceptanceMetrics, roomUtilization } from "../shared/metrics.js";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "@fontsource-variable/manrope";
@@ -15,6 +17,7 @@ const labels = {
 };
 const days = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const names = {
+  prestamos: "Préstamo a otro departamento",
   salones: "Salón",
   profesores: "Profesor",
   ufs: "Unidad de formación",
@@ -111,7 +114,7 @@ function App() {
     try {
       await fn();
     } catch (e) {
-      setError(e.message);
+      setError(explainError(e.message));
     } finally {
       setBusy(false);
     }
@@ -131,7 +134,7 @@ function App() {
       })
       .catch((e) => {
         setMe({ role: null });
-        setError(e.message);
+        setError(explainError(e.message));
       });
     const cb = () => setOnline(navigator.onLine);
     window.addEventListener("online", cb);
@@ -242,6 +245,7 @@ function App() {
         "Unidades de formación",
         "Ofertas",
         "Salones",
+        "Préstamos",
         "Solicitudes",
         "Usuarios y permisos",
         "Historial",
@@ -267,6 +271,11 @@ function App() {
       (!status || o.estado === status) &&
       (!type || u(o)?.tipo === type),
   );
+  const acceptanceSummary = db ? acceptanceMetrics(db,sem) : {ids:[],accepted:[],pending:[],percent:0};
+  const occupancy = db ? roomUtilization(db,sem,segment) : [];
+  const freeHours = occupancy.reduce((n,r)=>n+r.freeHours,0);
+  const availableHours = occupancy.reduce((n,r)=>n+r.totalHours,0);
+  const loanRows = db?.prestamos?.filter((p)=>p.semestre===sem) || [];
   function offerCard(o) {
     const ps = db.participaciones.filter((p) => p.oferta === o.id);
     const total = ps.reduce((n, p) => n + p.porcentaje, 0);
@@ -566,7 +575,7 @@ function App() {
           </span>
           <span>
             Coordinación <b>{fmt(w.coordinacion)}</b>
-          </span>
+          </span><span>Préstamos <b>{fmt(w.prestamos)}</b></span><span>Disponible aquí <b>{w.disponible === null ? "Por clasificar" : fmt(w.disponible)} UDC</b></span>
         </div>
         {p.tipo === "Cátedra" && (
           <p className="muted">
@@ -1005,7 +1014,7 @@ function App() {
                                 (c) => c.estado === "Sobrecarga pendiente",
                               ).length
                             }
-                            sub="Incluye coordinación e intensivas"
+                            sub="Incluye coordinación, intensivas y préstamos"
                           />
                         </>
                       ) : (
@@ -1023,11 +1032,34 @@ function App() {
                           <Stat
                             label="Mi carga"
                             value={db.cargas[0]?.estado || "Sin asignaciones"}
-                            sub="La coordinación está incluida"
+                            sub="Incluye coordinación y préstamos"
                           />
                         </>
                       )}
                     </div>
+                    {readAll && <div className="dashboard-grid">
+                      <section className="panel"><h2>Confirmación de carga docente</h2>
+                        <div className="dashboard-ring" style={{"--progress":acceptanceSummary.percent+'%'}}><strong>{acceptanceSummary.percent}%</strong></div>
+                        <p>{acceptanceSummary.accepted.length} de {acceptanceSummary.ids.length} profesores con todas sus asignaciones publicadas aceptadas.</p>
+                        <p className="muted">Solo se consideran ofertas publicadas. Los borradores y profesores sin oferta publicada no entran en el porcentaje.</p>
+                        <div className="buttons"><button onClick={()=>{changeTab("Profesores");setAcceptance("Carga aceptada");}}>Ver cargas aceptadas</button><button className="secondary" onClick={()=>{changeTab("Profesores");setAcceptance("Carga pendiente");}}>Ver pendientes ({acceptanceSummary.pending.length})</button></div>
+                      </section>
+                      <section className="panel"><h2>Distribución de profesores</h2>
+                        {["Cátedra","Planta","Por clasificar"].map(t=>{const n=db.profesores.filter(p=>p.tipo===t).length,pct=db.profesores.length?Math.round(n/db.profesores.length*100):0;return <button className="metric-row" key={t} onClick={()=>{changeTab("Profesores");setType(t);}}><span>{t === "Por clasificar" ? "No definido" : t} · {n} ({pct}%)</span><progress max="100" value={pct}/><span>Revisar →</span></button>})}
+                      </section>
+                      <section className="panel"><h2>Disponibilidad de salones</h2>
+                        <label>Periodo<select aria-label="Periodo de disponibilidad" value={segment} onChange={e=>setSegment(e.target.value)}>{segments.map(s=><option key={s} value={s}>{labels[s]}</option>)}</select></label>
+                        <strong className="metric-number">{fmt(freeHours)} h libres / semana</strong>
+                        <progress max={availableHours||1} value={freeHours}/>
+                        <p>{fmt(availableHours)} h semanales configuradas. Incluye reservas en borrador; no representa lugares de alumnos.</p>
+                        <button onClick={()=>changeTab("Salones")}>Ver ocupación de salones</button>
+                      </section>
+                      <section className="panel"><h2>Préstamos a otros departamentos</h2>
+                        <strong className="metric-number">{fmt(loanRows.reduce((n,p)=>n+p.udc,0))} UDC</strong>
+                        <p>{new Set(loanRows.map(p=>p.profesor)).size} profesores. Estas UDC consumen el tope semestral y reducen la carga disponible aquí.</p>
+                        {admin && <button onClick={()=>changeTab("Préstamos")}>Gestionar préstamos</button>}
+                      </section>
+                    </div>}
                     {admin &&
                       db.profesores.some(
                         (p) => p.tipo === "Por clasificar",
@@ -1113,7 +1145,7 @@ function App() {
                         onChange={(e) => setAcceptance(e.target.value)}
                       >
                         <option value="">Todas las respuestas</option>
-                        {["Pendiente", "Aceptada", "Cambio Solicitado"].map(
+                        {["Pendiente", "Aceptada", "Cambio Solicitado", "Carga aceptada", "Carga pendiente"].map(
                           (s) => (
                             <option key={s}>{s}</option>
                           ),
@@ -1134,11 +1166,12 @@ function App() {
                               .includes(query.toLowerCase()) &&
                             (!type || p.tipo === type) &&
                             (!acceptance ||
-                              parts.some(
+                              (acceptance === "Carga aceptada" ? acceptanceSummary.accepted.includes(p.id) :
+                              acceptance === "Carga pendiente" ? acceptanceSummary.pending.includes(p.id) : parts.some(
                                 (x) =>
                                   x.profesor === p.id &&
                                   x.estatus === acceptance,
-                              )) &&
+                              ))) &&
                             (!status ||
                               db.cargas.find((c) => c.profesor === p.id)
                                 ?.estado === status),
@@ -1282,7 +1315,7 @@ function App() {
                     <section className="panel">
                       <h2>Mi carga académica</h2>
                       <p>{find("profesores", myProfessor)?.nombre}</p>
-                      <p>{fmt(db.cargas.find((c) => c.profesor === myProfessor)?.total)} UDC semestrales, incluida coordinación.</p>
+                      <p>{fmt(db.cargas.find((c) => c.profesor === myProfessor)?.total)} UDC semestrales, incluida coordinación y préstamos.</p>
                       {!offers.length && <p>No tienes grupos asignados en este semestre.</p>}
                     </section>
                     {calendarView()}
@@ -1304,6 +1337,11 @@ function App() {
                     ))}
                   </>
                 )}
+                {tab === "Préstamos" && admin && <section className="panel">
+                  <div className="section-heading"><div><h2>Préstamos a otros departamentos</h2><p>Se suman a la carga total del semestre, no crean grupos locales ni descuentan dos veces una asignación.</p></div><button onClick={()=>open("prestamos",{semestre:sem})}>+ Préstamo</button></div>
+                  {!loanRows.length && <p>No hay préstamos en este semestre.</p>}
+                  {loanRows.map(p=><div className="record" key={p.id}><div><b>{find("profesores",p.profesor)?.nombre}</b><p>{p.departamento} · {fmt(p.udc)} UDC</p>{p.comentarios&&<p>{p.comentarios}</p>}</div><div className="buttons"><button className="secondary" onClick={()=>open("prestamos",p)}>Editar préstamo</button><button className="plain" onClick={()=>remove("prestamos",p)}>Eliminar préstamo</button></div></div>)}
+                </section>}
                 {tab === "Salones" && readAll && (
                   <>
                     <div className="toolbar">
@@ -1320,7 +1358,8 @@ function App() {
                     {!db.salones.length && <p>Registra los salones con su capacidad y disponibilidad para controlar el aforo.</p>}
                     {db.salones.filter((r) => !roomFilter || r.id === roomFilter).map((r) => (
                       <section className="panel" key={r.id}>
-                        <h2>{r.nombre} · {r.id}</h2>
+                        <h2>{r.nombre}</h2>
+                        <p>{fmt(occupancy.find(x=>x.id===r.id)?.freeHours)} h libres por semana en {segment}</p>
                         <p>Capacidad: {r.capacidad} alumnos · {r.dias} · {r.horario}</p>
                         {admin && <div className="buttons">
                           <button className="secondary" onClick={() => open("salones", r)}>Editar salón</button>
@@ -1843,6 +1882,7 @@ function App() {
 function Editor({ modal, db, semestre, busy, onSave }) {
   const { collection, item } = modal;
   const [values, setValues] = useState({ ...item });
+  const [formError,setFormError] = useState("");
   const change = (key, v) => setValues((x) => ({ ...x, [key]: v }));
   const field = (
     key,
@@ -1855,7 +1895,7 @@ function Editor({ modal, db, semestre, busy, onSave }) {
       hint,
       defaultValue = "",
     } = {},
-  ) => (
+  ) => key === "horario" ? <TimeRangePicker key={key} label={label} value={values[key] || ""} onChange={(v)=>change(key,v)}/> : (
     <label key={key}>
       {label}
       {options ? (
@@ -1881,8 +1921,9 @@ function Editor({ modal, db, semestre, busy, onSave }) {
           required={required}
           readOnly={readOnly}
           type={type}
-          min={type === "number" ? 0 : undefined}
-          step={type === "number" ? "0.01" : undefined}
+          min={type === "number" ? (key === "capacidad" ? 1 : key === "porcentaje" || (key === "udc" && collection === "prestamos") ? 0.01 : 0) : undefined}
+          step={type === "number" ? (["capacidad","alumnos"].includes(key) ? "1" : "0.01") : undefined}
+          max={key === "porcentaje" ? 100 : undefined}
           value={values[key] ?? defaultValue}
           onChange={(e) => change(key, e.target.value)}
         />
@@ -1932,6 +1973,9 @@ function Editor({ modal, db, semestre, busy, onSave }) {
     <form
       onSubmit={(e) => {
         e.preventDefault();
+        setFormError("");
+        if (collection === "semestres" && !values.inicio) { setFormError("Elige un lunes en el calendario para definir el inicio del semestre."); return; }
+        if (values.horario && values.horario.slice(0,5) >= values.horario.slice(6)) { setFormError("La hora de fin debe ser posterior al inicio. Corrige el horario antes de guardar."); return; }
         const defaults = {};
         if (collection === "profesores") defaults.tipo = "Cátedra";
         if (collection === "ufs") {
@@ -1949,7 +1993,8 @@ function Editor({ modal, db, semestre, busy, onSave }) {
         onSave({ ...defaults, ...values, id: item.id || values.id });
       }}
     >
-      {["profesores", "ufs", "semestres", "salones"].includes(collection) &&
+      {formError && <p className="alert error" role="alert">{formError}</p>}
+      {["profesores", "ufs", "semestres"].includes(collection) &&
         field(
           "id",
           collection === "profesores"
@@ -1959,7 +2004,7 @@ function Editor({ modal, db, semestre, busy, onSave }) {
               : collection === "salones" ? "Clave del salón" : "Identificador del semestre",
           { readOnly: !!item.id },
         )}
-      {["profesores", "ufs", "semestres", "salones"].includes(collection) &&
+      {["profesores", "ufs", "semestres"].includes(collection) &&
         field("nombre", "Nombre")}
       {collection === "profesores" && (
         <>
@@ -1984,15 +2029,21 @@ function Editor({ modal, db, semestre, busy, onSave }) {
         </>
       )}
       {collection === "salones" && <>
+        {field("edificio", "Edificio", { hint: "Ejemplo: CEDES o Aulas 6." })}
+        {field("numero", "Número de salón", { hint: "Ejemplo: 319 o 206; también admite letras." })}
+        <p>Salón: <b>{values.edificio || "Edificio"}-{values.numero || "Número"}</b>. Su referencia interna se conserva al editar.</p>
         {field("capacidad", "Capacidad de alumnos", { type: "number", hint: "Número entero mayor a cero." })}
         {multi("dias", "Días de trabajo", days)}
         {field("horario", "Horario de trabajo", { hint: "Formato de 24 horas: 07:00-22:00. Un rango por día seleccionado." })}
       </>}
-      {collection === "semestres" &&
-        field("inicio", "Lunes de inicio del semestre", {
-          type: "date",
-          hint: "Se generan tres periodos de 5 semanas y dos semanas intermedias. Duración calendario: 17 semanas.",
-        })}
+      {collection === "semestres" && <SemesterDatePicker value={values.inicio || ""} onChange={(v)=>change("inicio",v)}/>}
+      {collection === "prestamos" && <>
+        {field("profesor","Profesor",{options:options("profesores")})}
+        {field("semestre","Semestre",{options:options("semestres")})}
+        {field("departamento","Departamento de destino")}
+        {field("udc","UDC de préstamo",{type:"number",hint:"Consumen el tope de 10/14 UDC del semestre. No captures aquí carga que ya esté contabilizada en un grupo local."})}
+        {field("comentarios","Observaciones",{required:false})}
+      </>}
       {collection === "ofertas" && (
         <>
           {field("alumnos", "Número de alumnos del grupo", { type: "number", defaultValue: 0, hint: "Requerido antes de publicar clases en salones registrados." })}

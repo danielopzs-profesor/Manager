@@ -1212,3 +1212,18 @@ footer {
 .brand--light > .brand__copy {
   color: var(--white);
 }
+
+.dashboard-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:24px 0;}
+.dashboard-ring {--progress:0%;width:136px;height:136px;border-radius:50%;background:conic-gradient(var(--primary,#1264ed) var(--progress),#e9edf4 0);display:grid;place-items:center;margin:18px 0;}
+.dashboard-ring strong {display:grid;place-items:center;width:106px;height:106px;border-radius:50%;background:white;font-size:30px;}
+.metric-row {display:grid;grid-template-columns:1fr;gap:8px;background:#f4f7fc;color:#172b4d;text-align:left;width:100%;margin:12px 0;}
+.metric-row progress,.dashboard-grid progress {width:100%;accent-color:#1264ed;}
+.metric-number {display:block;font-size:28px;margin:20px 0;}
+.date-picker,.time-picker {border:1px solid #d8e1ef;border-radius:16px;padding:16px;margin:12px 0;min-width:0;}
+.date-grid {display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;text-align:center;}
+.date-grid button {padding:10px 0;min-width:0;}
+.date-grid button:disabled {background:#f2f4f7;color:#7c8799;opacity:.65;}
+.date-grid button.selected {outline:3px solid #071b44;outline-offset:1px;}
+.time-fields {display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.field-error {color:#ab183e;}
+@media(max-width:760px){.dashboard-grid{grid-template-columns:1fr;}.date-picker .toolbar{flex-wrap:wrap;}.date-grid button{padding:10px 0;}}

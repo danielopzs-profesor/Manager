@@ -63,6 +63,17 @@ try {
   await page
     .getByRole("heading", { name: "Una mirada al semestre." })
     .waitFor();
+  await page.getByRole("button", {name:"Editar fechas",exact:true}).click();
+  await dialogCalendar();
+  async function dialogCalendar(){
+    const cal=page.getByRole("dialog");
+    await cal.getByLabel("Año de inicio").selectOption("2027");
+    await cal.getByLabel("Mes de inicio").selectOption("1");
+    assert.equal(await cal.getByRole("button",{name:"Seleccionar 2 de febrero de 2027",exact:true}).isDisabled(),true);
+    await cal.getByRole("button",{name:"Seleccionar 1 de febrero de 2027",exact:true}).click();
+    await cal.getByRole("button",{name:"Guardar cambios",exact:true}).click();
+    await cal.waitFor({state:"hidden"});
+  }
   await page.getByRole("button", { name: "Profesores", exact: true }).click();
   await page.getByRole("button", { name: "+ Profesor", exact: true }).click();
   const dialog = page.getByRole("dialog");
@@ -94,11 +105,12 @@ try {
   await dialog.waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "Salones", exact: true }).click();
   await page.getByRole("button", { name: "+ Salón", exact: true }).click();
-  await dialog.getByLabel("Clave del salón", {exact:true}).fill("R101");
-  await dialog.getByLabel("Nombre", {exact:true}).fill("Taller de prueba");
+  await dialog.getByLabel("Edificio", {exact:true}).fill("CEDES");
+  await dialog.getByLabel("Número de salón", {exact:true}).fill("319");
   await dialog.getByLabel("Capacidad de alumnos", {exact:true}).fill("30");
   await dialog.getByLabel("Lun", {exact:true}).check();
-  await dialog.getByLabel("Horario de trabajo", {exact:true}).fill("08:00-18:00");
+  await dialog.getByLabel("Horario de trabajo: inicio", {exact:true}).fill("08:00");
+  await dialog.getByLabel("Horario de trabajo: fin", {exact:true}).fill("18:00");
   await dialog.getByRole("button", {name:"Guardar cambios", exact:true}).click();
   await dialog.waitFor({state:"hidden"});
   await page.getByRole("button", { name: "Ofertas", exact: true }).click();
@@ -106,7 +118,7 @@ try {
   await page.locator(".record").filter({ hasText: "09:00-13:00" })
     .getByRole("button", { name: "Editar", exact: true }).click();
   await dialog.getByLabel("Ana Ejemplo", { exact: true }).check();
-  await dialog.getByLabel("Aula", {exact:true}).selectOption("R101");
+  await dialog.getByLabel("Aula", {exact:true}).selectOption({label:"CEDES-319 · 30 alumnos · Lun 08:00-18:00"});
   await dialog.getByRole("button", { name: "Guardar cambios" }).click();
   await dialog.waitFor({ state: "hidden" });
 
@@ -115,13 +127,24 @@ try {
     .click();
   await page.getByText("Oferta publicada. Ya puedes compartirla.").waitFor();
   await page.getByRole("button", {name:"Salones",exact:true}).click();
-  await page.getByRole("heading", {name:"Taller de prueba · R101",exact:true}).waitFor();
+  await page.getByRole("heading", {name:"CEDES-319",exact:true}).waitFor();
   await page.getByText("09:00-13:00 · Laboratorio",{exact:true}).waitFor();
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),false,"Mapa de salones móvil desbordado");
   await page.screenshot({path:"/tmp/arte-screens/salones-mobile.png",fullPage:true});
   await page.setViewportSize({width:1440,height:1050});
 
+  await page.getByRole("button", {name:"Préstamos",exact:true}).click();
+  await page.getByRole("button", {name:"+ Préstamo",exact:true}).click();
+  await dialog.getByLabel("Profesor",{exact:true}).selectOption("L001");
+  await dialog.getByLabel("Departamento de destino",{exact:true}).fill("Diseño");
+  await dialog.getByLabel("UDC de préstamo",{exact:true}).fill("3");
+  await dialog.getByRole("button",{name:"Guardar cambios",exact:true}).click();
+  await dialog.waitFor({state:"hidden"});
+  await page.getByRole("button",{name:"Inicio",exact:true}).click();
+  await page.getByRole("heading",{name:"Disponibilidad de salones",exact:true}).waitFor();
+  await page.getByRole("button",{name:"Ver cargas aceptadas",exact:true}).click();
+  await page.getByRole("button",{name:"Inicio",exact:true}).click();
   await page
     .getByRole("button", { name: "Usuarios y permisos", exact: true })
     .click();

@@ -57,7 +57,7 @@ Si configuras un dominio propio, agrega `PUBLIC_URL=https://tu-dominio` y vuelve
 ## 5. Cargar tu programación
 
 1. Primero aparecerán datos ficticios para que compruebes el funcionamiento.
-2. Pulsa **↓ Excel** para descargar una plantilla con las ocho pestañas académicas, incluido salones.
+2. Pulsa **↓ Excel** para descargar una plantilla con las nueve pestañas académicas, incluidos salones y prestamos.
 3. Prepara tu archivo respetando el formato descrito en README.md.
 4. Pulsa **↑ Importar**, elige el archivo y confirma. El máximo es **3 MB**. Esta operación reemplaza toda la programación; exporta un respaldo antes.
 5. Comprueba los profesores y horarios.

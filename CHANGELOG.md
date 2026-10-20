@@ -1,3 +1,11 @@
+## 3.6.0
+
+- Salones por edificio y número, con identificación interna estable y validación de combinaciones duplicadas.
+- Calendario visual que habilita lunes para inicio de semestre; selectores de hora para sesiones y disponibilidad de salones.
+- Dashboard con confirmación docente completa, distribución contractual, horas libres semanales por periodo y préstamos; accesos a vistas filtradas.
+- Préstamos semestrales a otros departamentos que consumen tope de carga y actualizan la disponibilidad y aprobaciones.
+- Mensajes de validación que indican datos conflictivos y opciones para corregirlos; compatibilidad con Excel anterior.
+
 ## 3.5.0
 
 - Catálogo de salones con clave, nombre, capacidad y días/horario de trabajo.

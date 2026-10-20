@@ -84,6 +84,10 @@ export function academicRoutes(app, { store, auth, admin }) {
       sheets[collection].map((key) => [key, item[key] ?? ""]),
     );
     clean.id = String(clean.id || randomUUID());
+    if (collection === "salones" && (clean.edificio || clean.numero)) {
+      clean.edificio = String(clean.edificio).trim(); clean.numero = String(clean.numero).trim();
+      clean.nombre = `${clean.edificio}-${clean.numero}`;
+    }
     for (const key of ["udc", "duracion", "porcentaje", "capacidad", "alumnos"])
       if (key in clean) clean[key] = Number(clean[key]);
     if (collection === "ofertas") clean.estado = "Borrador";
