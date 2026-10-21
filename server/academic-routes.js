@@ -1,3 +1,6 @@
+import {reportPDF} from "./report.js";
+import {isAdmin,accountRole,assignmentPermission,protectIdentities} from "./permissions.js";
+import {historyCategory,historyText} from "./history.js";
 import { randomUUID } from "node:crypto";
 import multer from "multer";
 import {
@@ -17,7 +20,7 @@ import {
 } from "./academic.js";
 import { passwordHash } from "./accounts.js";
 import { sheets, exportAcademic, importAcademic } from "./academic-excel.js";
-export function academicRoutes(app, { store, auth, admin }) {
+export function academicRoutes(app, { store, auth, admin, env = {} }) {
   const load = async () => {
     let db = await store.read();
     if (!db.academic) {
@@ -40,6 +43,7 @@ export function academicRoutes(app, { store, auth, admin }) {
       }
       const before = structuredClone(a);
       await fn(a);
+      protectIdentities(before,a);
       validateAcademic(a);
       invalidate(a, before);
       validateAcademic(a);
@@ -51,6 +55,30 @@ export function academicRoutes(app, { store, auth, admin }) {
         diffAcademic(before, a),
       );
     });
+  app.get("/api/academic/report.pdf",auth,admin,async(req,res)=>{
+    const a=await load();const semestre=String(req.query.semestre||a.semestres[0]?.id||"");res.attachment(`Reporte_${semestre.replace(/[^a-z0-9_-]/gi,"")}.pdf`).type("application/pdf").send(reportPDF(a,semestre));
+  });
+  app.post("/api/academic/professor-role",auth,admin,async(req,res)=>{
+    if(req.session.role!=="superadmin")return res.status(403).json({error:"Solo el superadministrador puede cambiar roles"});
+    if(typeof req.body.enabled!=="boolean")throw Error("Marca o desmarca el permiso de administrador");
+    await change(req,a=>{
+      const p=a.profesores.find(p=>p.id===req.body.profesor);if(!p)throw Error("Profesor inexistente");
+      let account=a.admins.find(x=>x.profesor===p.id||x.id===p.correo.toLowerCase());
+      if(p.protectedAccess||p.accessRole==="superadmin"||account?.protegido||account?.role==="superadmin")throw Error("El superadministrador conserva permanentemente su rol");
+      if(!account){if(!p.passwordHash)throw Error("Configura primero el acceso del profesor; después podrás otorgar el rol sin crear otra contraseña");account={id:p.correo.toLowerCase(),nombre:p.nombre,profesor:p.id,hash:p.passwordHash};a.admins.push(account);}
+      if(account.profesor&&account.profesor!==p.id)throw Error("La cuenta está vinculada a otro profesor");account.profesor=p.id;account.role=req.body.enabled?"admin":"profesor";p.accessRole="profesor";req.body.action="Cambiar rol";req.body.detail=p.id;
+    });res.json({ok:true});
+  });
+  app.get("/api/academic/history.txt",auth,admin,async(req,res)=>{
+    const a=await load();const category=String(req.query.categoria||"");
+    res.attachment("Historial_Academico.txt").type("text/plain; charset=utf-8").send(historyText(a.auditoria.filter(r=>!category||(r.categoria||historyCategory(r.accion))===category)));
+  });
+  app.post("/api/academic/history/clear",auth,admin,async(req,res)=>{
+    if(req.body.confirmacion!=="BORRAR HISTORIAL")throw Error("Escribe BORRAR HISTORIAL para confirmar. Descarga primero el TXT.");
+    await change(req,a=>{const category=String(req.body.categoria||"");const allowed=["","accesos","errores","cambios","respuestas","aprobaciones","datos","seguridad"];if(!allowed.includes(category))throw Error("Categoría inválida");a.auditoria=category?a.auditoria.filter(r=>(r.categoria||historyCategory(r.accion))!==category):[];req.body.action="Limpieza de historial";req.body.detail=`Categoría: ${category||"todas"}`;});
+    // The record of this deletion remains. Previous retained backups may still contain older events.
+    res.json({ok:true});
+  });
   app.get("/api/academic", auth, async (req, res) => {
     const all = await load();
     const a = publicAcademic(all, req.session);
@@ -58,6 +86,7 @@ export function academicRoutes(app, { store, auth, admin }) {
     res.json({
       ...a,
       miProfesor: req.session.nomina || null,
+      ofertasCoordinadas: all.coordinaciones.filter(c=>c.profesor===req.session.nomina).map(c=>c.oferta),
       calendario: calendar(a.semestres.find((s) => s.id === semestre)),
       cargas: a.profesores.map((p) => ({
         profesor: p.id,
@@ -67,16 +96,21 @@ export function academicRoutes(app, { store, auth, admin }) {
         contrato: contract(a, p.id, semestre),
         distribucion: distribution(a, p.id, semestre),
       })),
-      conflictos: req.session.role === "admin" ? conflicts(all, semestre) : [],
+      conflictos: isAdmin(req.session.role) ? conflicts(all, semestre) : [],
       avisos:
-        req.session.role === "admin"
+        isAdmin(req.session.role)
           ? all.ofertas
               .filter((o) => o.semestre === semestre)
               .map((o) => ({ oferta: o.id, errores: publishIssues(all, o) }))
           : [],
     });
   });
-  app.post("/api/academic/save", auth, admin, async (req, res) => {
+  const allocationAccess = (req,res,next) => {
+    if (isAdmin(req.session.role)) return next();
+    if(req.session.nomina && req.body.collection === "participaciones") return next();
+    res.status(403).json({error:"Solo administración o coordinación del grupo pueden modificar asignaciones"});
+  };
+  app.post("/api/academic/save", auth, allocationAccess, async (req, res) => {
     const { collection, item } = req.body;
     if (!Object.hasOwn(sheets, collection) || !item || typeof item !== "object")
       throw Error("Colección inválida");
@@ -88,8 +122,9 @@ export function academicRoutes(app, { store, auth, admin }) {
       clean.edificio = String(clean.edificio).trim(); clean.numero = String(clean.numero).trim();
       clean.nombre = `${clean.edificio}-${clean.numero}`;
     }
-    for (const key of ["udc", "duracion", "porcentaje", "capacidad", "alumnos"])
+    for (const key of ["udc", "duracion", "porcentaje", "capacidad", "alumnos", "udc_maximas"])
       if (key in clean) clean[key] = Number(clean[key]);
+    if (collection === "profesores" && clean.tipo !== "Préstamo") clean.area = "";
     if (collection === "ofertas") clean.estado = "Borrador";
     if (collection === "participaciones") {
       clean.estatus = "Pendiente";
@@ -99,6 +134,7 @@ export function academicRoutes(app, { store, auth, admin }) {
     req.body.detail = `Registro ${clean.id}`;
     await change(req, (a) => {
       const old = a[collection].find((r) => r.id === clean.id);
+      assignmentPermission(a,req.session,collection,clean,old);
       if (collection === "sesiones" && a.salones.length && (!old || old.aula !== clean.aula) && !a.salones.some((r) => r.id === clean.aula)) throw Error("Selecciona un salón registrado");
       if (
         collection === "participaciones" &&
@@ -115,12 +151,14 @@ export function academicRoutes(app, { store, auth, admin }) {
     });
     res.json({ ok: true, id: clean.id });
   });
-  app.post("/api/academic/delete", auth, admin, async (req, res) => {
+  app.post("/api/academic/delete", auth, allocationAccess, async (req, res) => {
     const { collection, id } = req.body;
     if (!Object.hasOwn(sheets, collection)) throw Error("Colección inválida");
     req.body.action = "Eliminar " + collection;
     req.body.detail = `Registro ${id}`;
     await change(req, (a) => {
+      const record=a[collection].find(r=>r.id===id);
+      assignmentPermission(a,req.session,collection,record,record);
       if (collection === "ofertas") {
         if (!a.ofertas.some((o) => o.id === id))
           throw Error("Oferta inexistente");
@@ -175,7 +213,7 @@ export function academicRoutes(app, { store, auth, admin }) {
     res.json({ ok: true });
   });
   app.post("/api/academic/respond", auth, async (req, res) => {
-    if (req.session.role !== "profesor" && !(req.session.role === "admin" && req.session.nomina))
+    if (req.session.role !== "profesor" && !(isAdmin(req.session.role) && req.session.nomina))
       return res
         .status(403)
         .json({ error: "La aceptación corresponde al profesor" });
@@ -212,7 +250,7 @@ export function academicRoutes(app, { store, auth, admin }) {
   app.post("/api/academic/admin", auth, admin, async (req, res) => {
     const { id, nombre, password, remove } = req.body;
     const role = req.body.role || "admin";
-    if (!["admin", "consulta"].includes(role)) throw Error("Rol inválido");
+    if (!["admin", "superadmin", "profesor", "consulta"].includes(role)) throw Error("Rol inválido");
     const target = String(id || "")
       .trim()
       .toLowerCase();
@@ -227,6 +265,13 @@ export function academicRoutes(app, { store, auth, admin }) {
     await change(req, (a) => {
       first = a.admins.length === 0;
       const existing = a.admins.find((x) => x.id === target);
+      if (existing?.protegido || existing?.role === "superadmin") {
+        if (remove || role !== "superadmin") throw Error("El rol y los permisos del superadministrador son permanentes.");
+        if(req.session.adminId!==target)throw Error("Solo ese superadministrador puede modificar sus propias credenciales.");
+      }
+      if(role === "superadmin" && existing?.role !== "superadmin")throw Error("Los superadministradores solo se establecen mediante identidades verificadas en la configuración del servidor.");
+      if(req.session.role!=="superadmin" && a.admins.length && ((role==="admin" && (!existing || accountRole(existing)!==role)) || (existing && accountRole(existing)!==role) || (remove&&isAdmin(accountRole(existing))))) {const e=Error("Solo un superadministrador puede otorgar o retirar roles.");e.status=403;throw e;}
+
       const admins = a.admins.filter(
         (x) => (x.role || "admin") === "admin",
       ).length;
@@ -256,7 +301,7 @@ export function academicRoutes(app, { store, auth, admin }) {
       if (typeof nombre !== "string" || !nombre.trim())
         throw Error("Nombre obligatorio");
       const old = a.admins.find((x) => x.id === target);
-      const profesor = role === "admin" ? String(req.body.profesor ?? old?.profesor ?? "") : "";
+      const profesor = role !== "consulta" ? String(req.body.profesor ?? old?.profesor ?? "") : "";
       if (profesor && !a.profesores.some((p) => p.id === profesor)) throw Error("Profesor inexistente");
       if (profesor && a.admins.some((x) => x.id !== target && x.profesor === profesor)) throw Error("El profesor ya está vinculado a otra cuenta");
       if (!old && !hash)
@@ -289,6 +334,7 @@ export function academicRoutes(app, { store, auth, admin }) {
       await change(req, (a) => {
         const p = a.profesores.find((p) => p.id === req.body.profesor);
         if (!p) throw Error("Profesor no encontrado");
+        if (p.protectedAccess && req.session.nomina !== p.id && (p.passwordHash || req.session.role !== "superadmin")) {const e=Error("Solo ese superadministrador puede cambiar su contraseña docente");e.status=403;throw e;}
         p.passwordHash = hash;
       });
       res.json({ ok: true });
@@ -308,13 +354,13 @@ export function academicRoutes(app, { store, auth, admin }) {
     req.body.detail = String(req.body.id);
     await change(req, (a) => {
       const credentials = new Map(
-        a.profesores.map((p) => [p.id, p.passwordHash]),
+        a.profesores.map((p) => [p.id, {hash:p.passwordHash,accessRole:p.accessRole,protectedAccess:p.protectedAccess}]),
       );
       for (const key of Object.keys(sheets))
         a[key] = structuredClone(previous[key]);
       a.profesores.forEach((p) => {
         delete p.passwordHash;
-        if (credentials.get(p.id)) p.passwordHash = credentials.get(p.id);
+        if (credentials.get(p.id)) {const saved=credentials.get(p.id);p.passwordHash=saved.hash;p.accessRole=saved.accessRole;p.protectedAccess=saved.protectedAccess;}
       });
       a.sobrecargas = [];
       a.ofertas.forEach((o) => (o.estado = "Borrador"));

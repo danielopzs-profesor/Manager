@@ -122,3 +122,7 @@ El acceso principal muestra únicamente Usuario y Contraseña. Para profesores, 
 Catálogo de capacidad y horario de trabajo, asignación desde sesiones o desde Salones y mapa de ocupación por segmento del semestre. Captura alumnos en cada grupo para validar aforo antes de publicar. Los salones registrados bloquean empalmes y sesiones fuera de disponibilidad; las aulas anteriores se conservan para su clasificación. El Excel incorpora salones y alumnos; las plantillas anteriores siguen siendo compatibles.
 
 La rama desarrollo/salones-y-perfiles se prepara para validación local antes de integrar a main. Usa Neon de pruebas si no deseas afectar datos publicados.
+
+### Preparación Hostinger y permisos (4.0.0)
+
+La rama web-deploy contiene el arranque npm run start:web, con la política de identidades confirmadas en config/access-policy.json. Para aplicar la política localmente establece ENFORCE_NAMED_ROLES=1 antes de iniciar. Se requiere una base con esas personas registradas. No se han migrado servicios ni cambiado main. Consulta [WEB_DEPLOY_HOSTINGER.md](docs/WEB_DEPLOY_HOSTINGER.md) para roles, historial, descargas y prerrequisitos.

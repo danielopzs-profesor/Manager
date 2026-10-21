@@ -132,7 +132,7 @@ test("Consulta: ve toda la programación sin secretos, no puede modificar ni exp
           ac,
         )
       ).status,
-      400,
+      403,
     );
     assert.equal(
       (
@@ -147,9 +147,9 @@ test("Consulta: ve toda la programación sin secretos, no puede modificar ni exp
           ac,
         )
       ).status,
-      200,
+      403,
     );
-    assert.equal((await req("/academic", null, rc)).status, 401);
+    assert.equal((await req("/academic", null, rc)).status, 200);
   } finally {
     await new Promise((r) => server.close(r));
     await runtime.close();

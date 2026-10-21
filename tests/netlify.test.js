@@ -179,7 +179,8 @@ test(
         p.headers?.["set-cookie"],
       ])[0].split(";")[0];
       const pd = JSON.parse((await request(one, "/academic", null, pc)).body);
-      assert.equal(pd.participaciones.length, 1);
+      assert.equal(pd.participaciones.length, 2);
+      assert.deepEqual(pd.ofertasCoordinadas,["O1"]);
       assert.equal(
         (
           await request(

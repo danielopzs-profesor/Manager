@@ -215,12 +215,13 @@ export class Store {
   async read() {
     return decode(await fs.readFile(this.file));
   }
-  mutate(fn) {
+  mutate(fn, { snapshot = true } = {}) {
     const job = this.queue.then(async () => {
       const db = await this.read();
       const previous = structuredClone(db);
       const next = (await fn(db)) || db;
       validate(next);
+      if (snapshot) {
       let history = [];
       try {
         history = JSON.parse(
@@ -243,6 +244,7 @@ export class Store {
         this.file + ".history.json.tmp",
         this.file + ".history.json",
       );
+      }
       const tmp = this.file + ".tmp";
       await fs.writeFile(tmp, await encode(next));
       await fs.rename(tmp, this.file);

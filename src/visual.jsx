@@ -82,6 +82,7 @@ export function Icon({ name = "grid", size = 20 }) {
 export const navIcons = {
   Salones: "grid",
   Préstamos: "users",
+  Coordinación: "calendar",
   "Mi carga académica": "calendar",
   Inicio: "grid",
   Profesores: "users",

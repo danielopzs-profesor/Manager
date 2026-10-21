@@ -1,3 +1,4 @@
+import {downloadCard} from "./downloads.js";
 import { SemesterDatePicker, TimeRangePicker, explainError } from "./date-time.jsx";
 import { acceptanceMetrics, roomUtilization } from "../shared/metrics.js";
 import React, { useEffect, useState } from "react";
@@ -98,6 +99,7 @@ function App() {
     [status, setStatus] = useState(""),
     [acceptance, setAcceptance] = useState(""),
     [type, setType] = useState(""),
+    [historyCategory, setHistoryCategory] = useState(""),
     [roomFilter, setRoomFilter] = useState(""),
     [segment, setSegment] = useState("P1"),
     [view, setView] = useState("Semana"),
@@ -187,12 +189,15 @@ function App() {
     return () => window.removeEventListener("keydown", key);
   }, [modal, busy]);
   useEffect(() => {
-    if (tab === "Datos" && me?.role === "admin")
+    if (tab === "Datos" && ["admin","superadmin"].includes(me?.role))
       api("/academic/backups")
         .then(setBackups)
         .catch((e) => setError(e.message));
   }, [tab, db?.revision]);
-  const admin = me?.role === "admin";
+  const admin = ["admin","superadmin"].includes(me?.role);
+  const superAdmin = me?.role === "superadmin";
+  const coordinatedIds = db?.ofertasCoordinadas || [];
+  const canManageOffer = o => admin || (tab === "Coordinación" && coordinatedIds.includes(o.id));
   const readAll = admin || me?.role === "consulta";
   const find = (collection, id) => db?.[collection]?.find((x) => x.id === id);
   const u = (o) => find("ufs", o.uf);
@@ -253,7 +258,7 @@ function App() {
       ]
     : me?.role === "consulta"
       ? ["Inicio", "Profesores", "Unidades de formación", "Ofertas", "Salones"]
-      : ["Inicio", "Mi horario", "Mis respuestas"];
+      : ["Inicio", "Mi horario", "Mis respuestas", ...(coordinatedIds.length ? ["Coordinación"] : [])];
   const changeTab = (t) => {
     setTab(t);
     setDetail("");
@@ -311,17 +316,18 @@ function App() {
             className="secondary"
             onClick={() => {
               setDetail(o.id);
-              setTab(readAll ? "Ofertas" : "Mis respuestas");
+              setTab(tab === "Coordinación" ? "Coordinación" : readAll ? "Ofertas" : "Mis respuestas");
             }}
           >
             Ver asignación →
           </button>
-          {admin && (
+          {canManageOffer(o) && (
             <>
               <button className="secondary" onClick={() => open("participaciones", { oferta: o.id })}>
                 Asignar profesor
               </button>
-              <button className="plain" onClick={() => open("ofertas", o)}>Editar</button>
+              {admin && <button className="plain" onClick={() => open("ofertas", o)}>Editar</button>}
+              {admin && <button className="secondary" onClick={()=>downloadCard(u(o)?.nombre||"Asignación",["Grupo "+o.grupo+" · Clave "+o.clave,o.periodos+" · "+o.duracion+" semanas · "+o.udc+" UDC",...ps.map(p=>(find("profesores",p.profesor)?.nombre||p.profesor)+" · "+p.porcentaje+" %")])}>Descargar ficha JPEG</button>}
             </>
           )}
         </div>
@@ -329,7 +335,7 @@ function App() {
     );
   }
   function offerDetail(o) {
-    const ps = db.participaciones.filter((p) => p.oferta === o.id);
+    const ps = db.participaciones.filter((p) => p.oferta === o.id && (readAll || tab === "Coordinación" || p.profesor === myProfessor));
     const coord = db.coordinaciones.find((c) => c.oferta === o.id);
     const issues = db.avisos.find((x) => x.oferta === o.id)?.errores || [];
     return (
@@ -384,7 +390,7 @@ function App() {
         )}
         <div className="section-heading">
           <h3>Responsabilidad docente</h3>
-          {admin && (
+          {canManageOffer(o) && (
             <button
               className="secondary"
               onClick={() => open("participaciones", { oferta: o.id })}
@@ -406,8 +412,8 @@ function App() {
                 {p.comentarios && <blockquote>{p.comentarios}</blockquote>}
               </div>
               <div className="buttons">
-                {(admin || me.role === "profesor") &&
-                  (admin ? (
+                {(canManageOffer(o) || p.profesor === myProfessor) &&
+                  (canManageOffer(o) ? (
                     <>
                       <button
                         className="secondary"
@@ -621,10 +627,8 @@ function App() {
         )}
         {admin && (
           <div className="buttons">
-            <button className="secondary" onClick={() => {
-              const account = db.admins.find((a) => a.profesor === p.id) || db.admins.find((a) => a.id.toLowerCase() === p.correo.toLowerCase());
-              setModal({ kind: "admin", item: account, profesor: p.id, suggestedId: p.correo, suggestedNombre: p.nombre, revision: db.revision });
-            }}>Cuenta administrativa</button>
+            {superAdmin && (()=>{const account=db.admins.find(a=>a.profesor===p.id||a.id===p.correo.toLowerCase());return <label className="role-check"><input type="checkbox" checked={["admin","superadmin"].includes(account?.role || p.accessRole)} disabled={busy||p.protectedAccess||account?.protegido||account?.role==="superadmin"} onChange={e=>run(()=>act("/academic/professor-role",{profesor:p.id,enabled:e.target.checked}))}/>Administrador{account?.role==="superadmin"||p.protectedAccess?" (superadministrador permanente)":""}</label>})()}
+            <button className="secondary" onClick={()=>downloadCard(p.nombre,[p.correo,"Contrato: "+p.tipo,...(p.area?["Área de origen: "+p.area]:[]),"Carga total: "+fmt(w.total)+" UDC", "Disponible: "+fmt(w.disponible)+" UDC",...assigned.map(o=>(u(o)?.nombre||o.uf)+" · Grupo "+o.grupo)])}>Descargar ficha JPEG</button>
             <button onClick={() => open("participaciones", { profesor: p.id })}>
               Asignar unidad de formación
             </button>
@@ -730,7 +734,7 @@ function App() {
                         key={s.id}
                         onClick={() => {
                           setDetail(o.id);
-                          setTab(readAll ? "Ofertas" : "Mis respuestas");
+                          setTab(tab === "Coordinación" ? "Coordinación" : readAll ? "Ofertas" : "Mis respuestas");
                         }}
                       >
                         <span>{s.horario}</span>
@@ -987,6 +991,7 @@ function App() {
                     )}
                   </div>
                 </div>
+                {admin && config.accessPolicyActive === false && <div className="alert">La política de identidades de web-deploy aún no está activada en este entorno. Activa ENFORCE_NAMED_ROLES=1 o usa el arranque start:web para aplicar la lista verificada.</div>}
                 {tab === "Inicio" && (
                   <>
                     <div className="stats">
@@ -1045,7 +1050,7 @@ function App() {
                         <div className="buttons"><button onClick={()=>{changeTab("Profesores");setAcceptance("Carga aceptada");}}>Ver cargas aceptadas</button><button className="secondary" onClick={()=>{changeTab("Profesores");setAcceptance("Carga pendiente");}}>Ver pendientes ({acceptanceSummary.pending.length})</button></div>
                       </section>
                       <section className="panel"><h2>Distribución de profesores</h2>
-                        {["Cátedra","Planta","Por clasificar"].map(t=>{const n=db.profesores.filter(p=>p.tipo===t).length,pct=db.profesores.length?Math.round(n/db.profesores.length*100):0;return <button className="metric-row" key={t} onClick={()=>{changeTab("Profesores");setType(t);}}><span>{t === "Por clasificar" ? "No definido" : t} · {n} ({pct}%)</span><progress max="100" value={pct}/><span>Revisar →</span></button>})}
+                        {["Cátedra","Planta","Cátedra interna","Préstamo","Por clasificar"].map(t=>{const n=db.profesores.filter(p=>p.tipo===t).length,pct=db.profesores.length?Math.round(n/db.profesores.length*100):0;return <button className="metric-row" key={t} onClick={()=>{changeTab("Profesores");setType(t);}}><span>{t === "Por clasificar" ? "No definido" : t} · {n} ({pct}%)</span><progress max="100" value={pct}/><span>Revisar →</span></button>})}
                       </section>
                       <section className="panel"><h2>Disponibilidad de salones</h2>
                         <label>Periodo<select aria-label="Periodo de disponibilidad" value={segment} onChange={e=>setSegment(e.target.value)}>{segments.map(s=><option key={s} value={s}>{labels[s]}</option>)}</select></label>
@@ -1120,7 +1125,7 @@ function App() {
                         onChange={(e) => setType(e.target.value)}
                       >
                         <option value="">Todos los tipos</option>
-                        {["Cátedra", "Planta", "Por clasificar"].map((t) => (
+                        {["Cátedra", "Planta", "Cátedra interna", "Préstamo", "Por clasificar"].map((t) => (
                           <option key={t}>{t}</option>
                         ))}
                       </select>
@@ -1205,7 +1210,7 @@ function App() {
                         .map((u) => (
                           <article className="panel" key={u.id}>
                             <Badge value={u.tipo} />
-                            <h3>{u.nombre}</h3>
+                            <h3>{u.nombre}</h3>{admin && <button className="secondary" onClick={()=>downloadCard(u.nombre,["Clave UF: "+u.id,"Tipo: "+u.tipo,"UDC base: "+u.udc])}>Descargar ficha JPEG</button>}
                             <p>
                               {u.id} · {fmt(u.udc)} UDC base
                             </p>
@@ -1230,7 +1235,7 @@ function App() {
                     </div>
                   </>
                 )}
-                {["Ofertas", "Mis respuestas"].includes(tab) && (
+                {["Ofertas", "Mis respuestas", "Coordinación"].includes(tab) && (
                   <>
                     {detail && find("ofertas", detail) ? (
                       offerDetail(find("ofertas", detail))
@@ -1299,7 +1304,7 @@ function App() {
                           </div>
                         )}
                         <div className="cards">
-                          {filteredOffers.map(offerCard)}
+                          {filteredOffers.filter(o=>tab!=="Coordinación"||coordinatedIds.includes(o.id)).map(offerCard)}
                         </div>
                         {!filteredOffers.length && (
                           <p className="empty">
@@ -1435,9 +1440,7 @@ function App() {
                           <b>{a.nombre}</b>
                           <p>
                             {a.id} ·{" "}
-                            {(a.role || "admin") === "consulta"
-                              ? "Consulta · Solo lectura"
-                              : "Administrador"}
+                            {({superadmin:"Superadministrador",admin:"Administrador",profesor:"Profesor",consulta:"Consulta · Solo lectura"})[a.role||"consulta"]}
                             {a.profesor && ` · Docente: ${find("profesores", a.profesor)?.nombre || a.profesor}`}
                           </p>
                         </div>
@@ -1473,14 +1476,18 @@ function App() {
                 )}
                 {tab === "Historial" && (
                   <section className="panel">
-                    <h2>Registro de cambios</h2>
-                    {db.auditoria
+                    <h2>Historial de la plataforma</h2>
+                    <div className="toolbar"><select aria-label="Categoría de historial" value={historyCategory} onChange={e=>setHistoryCategory(e.target.value)}><option value="">Todas las categorías</option>{["accesos","errores","cambios","respuestas","aprobaciones","datos","seguridad"].map(c=><option key={c}>{c}</option>)}</select>
+                    <a className="button secondary" href={"/api/academic/history.txt?categoria="+historyCategory}>Descargar TXT</a>
+                    <button className="danger" onClick={()=>setModal({kind:"clearHistory",revision:db.revision,categoria:historyCategory})}>Borrar historial</button></div>
+                    <p>Hasta 10 000 eventos recientes. La limpieza conserva un registro de quién la realizó; los respaldos previos pueden contener eventos anteriores.</p>
+                    {db.auditoria.filter(a=>!historyCategory||(a.categoria||"cambios")===historyCategory)
                       .slice()
                       .reverse()
                       .map((a) => (
                         <div className="record" key={a.id}>
                           <div>
-                            <b>{a.accion}</b>
+                            <b>{a.accion}</b> <Badge value={a.categoria||"cambios"}/>
                             <p>{a.detalle}</p>
                             <small>
                               {a.actor} ·{" "}
@@ -1515,9 +1522,9 @@ function App() {
                       </a>
                       <a
                         className="button secondary"
-                        href="/api/academic/backup"
+                        href={"/api/academic/report.pdf?semestre="+encodeURIComponent(sem)}
                       >
-                        Exportar respaldo JSON
+                        Descargar reporte PDF
                       </a>
                       <label className="button secondary">
                         Importar Excel
@@ -1603,6 +1610,7 @@ function App() {
                       admin: "Cuenta de acceso",
                       adminDelete: "Eliminar administrador",
                       import: "Reemplazar programación",
+                      clearHistory: "Borrar historial",
                       restore: "Restaurar respaldo",
                     }[modal.kind]}
               </h2>
@@ -1624,6 +1632,7 @@ function App() {
               <Editor
                 modal={modal}
                 semestre={sem}
+                allowedOfferIds={admin ? null : coordinatedIds}
                 db={db}
                 busy={busy || !online}
                 onSave={(item) =>
@@ -1657,6 +1666,7 @@ function App() {
                   e.preventDefault();
                   const values = Object.fromEntries(new FormData(e.target));
                   run(async () => {
+                    if (modal.kind === "clearHistory") await act("/academic/history/clear",{categoria:modal.categoria,confirmacion:values.confirmacion},modal.revision);
                     if (modal.kind === "approve")
                       await act(
                         "/academic/approve",
@@ -1719,6 +1729,7 @@ function App() {
                   });
                 }}
               >
+                {modal.kind === "clearHistory" && <label>Descarga antes el TXT. Escribe BORRAR HISTORIAL para eliminar {modal.categoria||"todas las categorías"}.<input name="confirmacion" required autoComplete="off"/></label>}
                 {modal.kind === "approve" && (
                   <label>
                     Justificación obligatoria
@@ -1810,9 +1821,11 @@ function App() {
                       Rol
                       <select
                         name="role"
-                        defaultValue={modal.item?.role || "admin"}
+                        defaultValue={modal.item?.role || "consulta"}
                       >
-                        <option value="admin">
+                        <option value="superadmin" disabled>Superadministrador permanente</option>
+                        <option value="profesor">Profesor</option>
+                        <option value="admin" disabled={!superAdmin && !!db.admins.length}>
                           Administrador · gestión completa
                         </option>
                         <option value="consulta">
@@ -1879,7 +1892,7 @@ function App() {
     </>
   );
 }
-function Editor({ modal, db, semestre, busy, onSave }) {
+function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
   const { collection, item } = modal;
   const [values, setValues] = useState({ ...item });
   const [formError,setFormError] = useState("");
@@ -1921,7 +1934,7 @@ function Editor({ modal, db, semestre, busy, onSave }) {
           required={required}
           readOnly={readOnly}
           type={type}
-          min={type === "number" ? (key === "capacidad" ? 1 : key === "porcentaje" || (key === "udc" && collection === "prestamos") ? 0.01 : 0) : undefined}
+          min={type === "number" ? (key === "capacidad" ? 1 : ["porcentaje","udc_maximas"].includes(key) || (key === "udc" && collection === "prestamos") ? 0.01 : 0) : undefined}
           step={type === "number" ? (["capacidad","alumnos"].includes(key) ? "1" : "0.01") : undefined}
           max={key === "porcentaje" ? 100 : undefined}
           value={values[key] ?? defaultValue}
@@ -1943,7 +1956,7 @@ function Editor({ modal, db, semestre, busy, onSave }) {
   const remaining = Math.max(0, 100 - participants
     .filter((p) => p.id !== item.id)
     .reduce((sum, p) => sum + Number(p.porcentaje), 0));
-  const assignmentOffers = db.ofertas.filter((o) => o.semestre === semestre || o.id === values.oferta);
+  const assignmentOffers = db.ofertas.filter((o) => (o.semestre === semestre || o.id === values.oferta) && (!allowedOfferIds || allowedOfferIds.includes(o.id)));
   const multi = (key, label, opts) => (
     <fieldset>
       <legend>{label}</legend>
@@ -2010,10 +2023,12 @@ function Editor({ modal, db, semestre, busy, onSave }) {
         <>
           {field("correo", "Correo institucional", { type: "email" })}
           {field("tipo", "Tipo de contrato", {
-            options: ["Cátedra", "Planta"],
+            options: ["Cátedra", "Planta", "Cátedra interna", "Préstamo", "Por clasificar"],
             defaultValue: "Cátedra",
             hint: "Cátedra: 10 UDC. Planta: 14 UDC. Topes semestrales incluyendo coordinación.",
           })}
+          {values.tipo==="Préstamo" && field("area","Área de origen")}
+          {["Cátedra interna","Préstamo"].includes(values.tipo) && field("udc_maximas","Tope semestral de UDC",{type:"number",hint:"Indica el tope autorizado para este profesor. No se asume un valor por defecto."})}
         </>
       )}
       {collection === "ufs" && (

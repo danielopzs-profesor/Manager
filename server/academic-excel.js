@@ -2,7 +2,7 @@ import ExcelJS from "exceljs";
 export const sheets = {
   prestamos: ["id", "profesor", "semestre", "departamento", "udc", "comentarios"],
   salones: ["id", "nombre", "capacidad", "dias", "horario", "edificio", "numero"],
-  profesores: ["id", "nombre", "correo", "tipo"],
+  profesores: ["id", "nombre", "correo", "tipo", "area", "udc_maximas"],
   ufs: ["id", "nombre", "tipo", "udc"],
   semestres: ["id", "nombre", "inicio"],
   ofertas: [
@@ -59,7 +59,7 @@ export async function importAcademic(buffer, current) {
       throw Error(
         `Falta la pestaña ${name}. Exporta primero la plantilla actual.`,
       );
-    if (cols.some((c, i) => !["alumnos","edificio","numero"].includes(c) && ws.getRow(1).getCell(i + 1).text !== c))
+    if (cols.some((c, i) => !["alumnos","edificio","numero","area","udc_maximas"].includes(c) && ws.getRow(1).getCell(i + 1).text !== c))
       throw Error(`Encabezados inválidos en ${name}`);
     a[name] = [];
     ws.eachRow((row, n) => {
@@ -69,8 +69,8 @@ export async function importAcademic(buffer, current) {
         const cell = row.getCell(i + 1);
         if (cell.type === ExcelJS.ValueType.Formula)
           throw Error("Usa valores, no fórmulas");
-        if (["edificio","numero"].includes(col) && !cell.text) return;
-        item[col] = ["udc", "duracion", "porcentaje", "capacidad", "alumnos"].includes(col)
+        if (["edificio","numero","area","udc_maximas"].includes(col) && !cell.text) return;
+        item[col] = ["udc", "duracion", "porcentaje", "capacidad", "alumnos", "udc_maximas"].includes(col)
           ? Number(cell.text)
           : cell.text;
       });
@@ -82,6 +82,8 @@ export async function importAcademic(buffer, current) {
       if (name === "profesores") {
         const old = current.profesores.find((p) => p.id === item.id);
         if (old?.passwordHash) item.passwordHash = old.passwordHash;
+        if (old?.accessRole) item.accessRole=old.accessRole;
+        if (old?.protectedAccess) item.protectedAccess=true;
       }
       a[name].push(item);
     });

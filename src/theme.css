@@ -1227,3 +1227,5 @@ footer {
 .time-fields {display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .field-error {color:#ab183e;}
 @media(max-width:760px){.dashboard-grid{grid-template-columns:1fr;}.date-picker .toolbar{flex-wrap:wrap;}.date-grid button{padding:10px 0;}}
+.role-check {display:inline-flex;align-items:center;gap:8px;margin:0;padding:8px;font-weight:600;}
+.role-check input {width:20px;height:20px;margin:0;}

@@ -76,9 +76,10 @@ test("API académica: cuentas individuales, revisiones, publicación, permisos, 
     });
     const tc = teacher.headers.get("set-cookie").split(";")[0];
     let t = await (await request("/academic", null, tc)).json();
-    assert.equal(t.profesores.length, 1);
+    assert.equal(t.profesores.length, 3);
+    assert.deepEqual(t.ofertasCoordinadas,["O1"]);
     assert.equal(t.admins.length, 0);
-    assert.equal(t.participaciones.length, 1);
+    assert.equal(t.participaciones.length, 2);
     assert.equal(
       (
         await request(
@@ -195,7 +196,7 @@ test("API académica: cuentas individuales, revisiones, publicación, permisos, 
           pc,
         )
       ).status,
-      400,
+      403,
     );
     assert.equal((await request("/academic/export", null, pc)).status, 200);
     const backup = await (await request("/academic/backup", null, pc)).text();

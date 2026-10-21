@@ -1,5 +1,5 @@
 import { chromium } from "playwright";
-import { mkdtemp, rm, mkdir } from "node:fs/promises";
+import { mkdtemp, rm, mkdir, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
@@ -85,6 +85,10 @@ try {
   await dialog.getByRole("button", { name: "Guardar cambios" }).click();
   await dialog.waitFor({ state: "hidden" });
   await page.getByRole("heading", { name: "Ana Ejemplo" }).waitFor();
+  const [cardDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("heading",{name:"Ana Ejemplo",exact:true}).locator("..").getByRole("button",{name:"Descargar ficha JPEG",exact:true}).click()]);
+  await cardDownload.saveAs("/tmp/arte-screens/ficha-profesor.jpg");
+  const jpeg=await readFile("/tmp/arte-screens/ficha-profesor.jpg");assert.equal(jpeg[0],255);assert.equal(jpeg[1],216);
+
   await page.getByRole("heading", { name: "Ana Ejemplo", exact: true }).locator("..")
     .getByRole("button", { name: "Asignar unidad de formación", exact: true }).click();
   await dialog.getByLabel("Oferta / grupo", { exact: true }).selectOption("O1");
@@ -151,6 +155,7 @@ try {
   await page.getByRole("button", { name: "+ Usuario", exact: true }).click();
   await dialog.getByLabel("Usuario", { exact: true }).fill("admin.uno");
   await dialog.getByLabel("Nombre", { exact: true }).fill("Admin Uno");
+  await dialog.locator("select[name=role]").selectOption("admin");
   await dialog.locator("select[name=profesor]").selectOption("L001");
   await dialog
     .getByLabel("Contraseña", { exact: false })
@@ -267,6 +272,31 @@ try {
     path: "/tmp/arte-screens/professor-mobile.png",
     fullPage: true,
   });
+
+  await page.getByRole("button",{name:"Coordinación",exact:true}).click();
+  await page.getByRole("button",{name:"Ver asignación →",exact:true}).first().click();
+  assert.equal(await page.getByRole("button",{name:"Publicar oferta",exact:true}).count(),0);
+  await page.getByRole("button",{name:"Asignar profesor",exact:true}).click();
+  assert.equal(await dialog.getByLabel("Oferta / grupo",{exact:true}).locator("option").count(),2);
+  await dialog.getByRole("button",{name:"Cerrar",exact:true}).click();
+  await page.getByRole("button",{name:"Cerrar sesión",exact:true}).click();
+  await store.mutate(db=>{const a=db.academic.admins.find(a=>a.id==="admin.uno");a.role="superadmin";a.protegido=true;});
+  await page.getByLabel("Usuario",{exact:true}).fill("admin.uno");
+  await page.getByLabel("Contraseña",{exact:true}).fill("browser-personal-password");
+  await page.getByRole("button",{name:"Ingresar →",exact:true}).click();
+  await page.getByRole("button",{name:"Profesores",exact:true}).click();
+  const marianaPanel=page.getByRole("heading",{name:"Mariana Torres",exact:true}).locator("..");
+  assert.equal(await marianaPanel.getByRole("checkbox").isDisabled(),true);
+  assert.equal(await page.getByRole("button",{name:"Cuenta administrativa",exact:true}).count(),0);
+  await page.getByRole("button",{name:"Historial",exact:true}).click();
+  await page.getByLabel("Categoría de historial").selectOption("accesos");
+  const [historyDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("link",{name:"Descargar TXT",exact:true}).click()]);
+  await historyDownload.saveAs("/tmp/arte-screens/historial.txt");
+  assert.match(await readFile("/tmp/arte-screens/historial.txt","utf8"),/Inicio de sesión/);
+  await page.getByRole("button",{name:"Datos",exact:true}).click();
+  const [pdfDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("link",{name:"Descargar reporte PDF",exact:true}).click()]);
+  await pdfDownload.saveAs("/tmp/arte-screens/reporte.pdf");
+  assert.equal((await readFile("/tmp/arte-screens/reporte.pdf")).subarray(0,8).toString(),"%PDF-1.4");
   assert.deepEqual(failures, []);
   console.log(
     "Navegador: creación de profesor y administrador, publicación, respaldos y aceptación docente correctos. Desktop y móvil sin errores JS ni desbordamiento.",

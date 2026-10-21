@@ -1,3 +1,5 @@
+import {isAdmin,accountRole,applyRolePolicy} from "./permissions.js";
+import {recordEvent,redact} from "./history.js";
 import express from "express";
 import session from "express-session";
 import helmet from "helmet";
@@ -51,6 +53,9 @@ export async function createApp({
     await store.mutate((db) => {
       migrateAcademic(db);
     });
+  await applyRolePolicy(store,env);
+  const pendingHistory = new Set();
+  const logEvent = event => {const job=recordEvent(store,event);pendingHistory.add(job);job.finally(()=>pendingHistory.delete(job));return job;};
   const app = express();
   if (serverless || env.TRUST_PROXY === "1") app.set("trust proxy", 1);
   app.use(helmet({ contentSecurityPolicy: production ? undefined : false }));
@@ -69,6 +74,11 @@ export async function createApp({
       },
     }),
   );
+  app.use("/api", (req,res,next) => {
+    res.on("finish",()=>{
+      if (res.statusCode >= 400) void logEvent({categoria:"errores",actor:req.session?.adminId || req.session?.nomina || "No autenticado",accion:"Solicitud rechazada",detalle:`${req.method} ${req.path.split("?")[0]} · HTTP ${res.statusCode}`,resultado:"error"});
+    });next();
+  });
   app.use("/api", (req, res, next) => {
     res.set("Cache-Control", "no-store");
     if (
@@ -84,9 +94,9 @@ export async function createApp({
   const auth = (req, res, next) => {
     if (!req.session.role)
       return res.status(401).json({ error: "Inicia sesión" });
-    if (["admin", "consulta"].includes(req.session.role))
+    if (req.session.adminId || req.session.role === "consulta" || (isAdmin(req.session.role) && !req.session.nomina))
       return accountAuth(req, res, next);
-    if (req.session.role === "profesor")
+    if (req.session.role === "profesor" || isAdmin(req.session.role))
       return store
         .read()
         .then((db) => {
@@ -95,7 +105,8 @@ export async function createApp({
           );
           if (
             !p ||
-            (p.passwordHash && p.passwordHash !== req.session.professorVersion)
+            (p.passwordHash && p.passwordHash !== req.session.professorVersion) ||
+            req.session.role !== (p.accessRole || "profesor")
           )
             return res.status(401).json({
               error: "Tu contraseña cambió. Cierra sesión y vuelve a ingresar.",
@@ -115,14 +126,14 @@ export async function createApp({
           (a) =>
             a.id === req.session.adminId &&
             a.hash === req.session.adminVersion &&
-            (a.role || "admin") === req.session.role,
+            accountRole(a) === req.session.role,
         )
       )
         return res.status(401).json({
           error:
             "Tu acceso cambió. Cierra sesión y vuelve a ingresar con tu cuenta individual.",
         });
-      if (!accounts.length && req.session.role !== "admin")
+      if (!accounts.length && !isAdmin(req.session.role))
         return res.status(401).json({ error: "Cuenta no disponible" });
       const account = accounts.find((a) => a.id === req.session.adminId);
       req.session.nomina = account?.role !== "consulta" ? account?.profesor || undefined : undefined;
@@ -132,8 +143,8 @@ export async function createApp({
     }
   };
   const admin = (req, res, next) =>
-    req.session.role === "admin"
-      ? accountAuth(req, res, next)
+    isAdmin(req.session.role)
+      ? auth(req, res, next)
       : res.status(403).json({ error: "Solo administrador" });
   const equal = (a, b) => {
     const x = Buffer.from(a),
@@ -158,7 +169,7 @@ export async function createApp({
       const username = String(identifier).trim().toLowerCase();
       const db = await store.read();
       const accounts = db.academic?.admins || [];
-      let nomina, professorVersion;
+      let nomina, professorVersion, facultyRole;
       const adminAccount = accounts.find((a) => a.id === username);
       const bootstrap = !accounts.length && !username;
       if (adminAccount) {
@@ -188,6 +199,7 @@ export async function createApp({
             error:
               "Solicita al administrador que configure tu contraseña de acceso.",
           });
+        facultyRole = p.accessRole || "profesor";
         professorVersion = p.passwordHash;
         nomina = p.nomina;
       }
@@ -195,17 +207,18 @@ export async function createApp({
         req.session.regenerate((e) => (e ? reject(e) : resolve())),
       );
       req.session.role = adminAccount
-        ? adminAccount.role || "admin"
+        ? accountRole(adminAccount)
         : bootstrap
           ? "admin"
-          : "profesor";
+          : facultyRole || "profesor";
       req.session.nomina = nomina;
       req.session.professorVersion = professorVersion;
       if (adminAccount) {
-        req.session.nomina = (adminAccount.role || "admin") === "admin" ? adminAccount.profesor || undefined : undefined;
+        req.session.nomina = (accountRole(adminAccount)) !== "consulta" ? adminAccount.profesor || undefined : undefined;
         req.session.adminId = adminAccount.id;
         req.session.adminVersion = adminAccount.hash;
       }
+      await logEvent({categoria:"accesos",actor:req.session.adminId || nomina || "Configuración inicial",accion:"Inicio de sesión",detalle:`Rol ${req.session.role}`});
       res.json({
         role: req.session.role,
         nomina: req.session.nomina,
@@ -213,12 +226,13 @@ export async function createApp({
       });
     },
   );
-  app.post("/api/logout", (req, res) =>
-    req.session.destroy(() => {
+  app.post("/api/logout", async (req, res) => {
+    await logEvent({categoria:"accesos",actor:req.session.adminId || req.session.nomina,accion:"Cierre de sesión"});
+    return req.session.destroy(() => {
       res.clearCookie("connect.sid");
       res.json({ ok: true });
-    }),
-  );
+    });
+  });
   app.get("/api/me", (req, res, next) => req.session.role ? auth(req, res, next) : next(), (req, res) =>
     res.json({
       role: req.session.role || null,
@@ -226,16 +240,17 @@ export async function createApp({
       adminId: req.session.adminId,
     }),
   );
-  app.get("/api/config", (req, res) =>
+  app.get("/api/config", async (req, res) =>
     res.json({
       production,
-      version: "3.6.0",
+      accessPolicyActive: Boolean((await store.read()).academic?.rolePolicy),
+      version: "4.0.0",
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,
     }),
   );
-  academicRoutes(app, { store, auth, admin });
+  academicRoutes(app, { store, auth, admin, env });
   app.use(
     ["/api/respond", "/api/classes", "/api/professors", "/api/import"],
     (req, res, next) =>
@@ -331,7 +346,8 @@ export async function createApp({
     );
   }
   app.use((err, req, res, next) => {
-    console.error(err.message);
+    console.error(redact(err.message));
+    void logEvent({categoria:"errores",actor:req.session?.adminId || req.session?.nomina,accion:"Error de operación",detalle:redact(err.message),resultado:"error"});
     const databaseError =
       typeof err.code === "string" && /^[0-9A-Z]{5}$/.test(err.code);
     res.status(databaseError ? 503 : err.status || 400).json({
@@ -343,6 +359,7 @@ export async function createApp({
   return {
     app,
     close: async () => {
+      await Promise.allSettled([...pendingHistory]);
       await runtime?.sessions.close();
       await runtime?.pool.end();
     },

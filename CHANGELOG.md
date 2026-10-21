@@ -1,3 +1,11 @@
+## 4.0.0 (web-deploy)
+
+- Rama de publicación independiente de main y arranque de producción para Hostinger con política nominativa verificada.
+- Superadministradores permanentes, retirada inicial de privilegios sobrantes, casilla de administración exclusiva del superadministrador y coordinación restringida a sus propios grupos.
+- Historial por categorías con accesos, errores, exportación TXT y limpieza confirmada; los eventos no generan respaldos de datos duplicados.
+- Cátedra interna y Préstamo recibido con tope individual y área de origen para préstamos recibidos; conserva préstamos hacia otras áreas.
+- Exportación XLSX, reporte PDF con gráficas y fichas JPEG de profesores, UF y asignaciones.
+
 ## 3.6.0
 
 - Salones por edificio y número, con identificación interna estable y validación de combinaciones duplicadas.

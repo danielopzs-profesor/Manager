@@ -1,3 +1,5 @@
+import {isAdmin} from "./permissions.js";
+import {historyCategory} from "./history.js";
 import { randomUUID, createHash } from "node:crypto";
 export const SEGMENTS = ["P1", "I1", "P2", "I2", "P3"];
 export const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -93,7 +95,7 @@ export function segments(o) {
   return list(o.periodos);
 }
 export function limit(p) {
-  return p.tipo === "Cátedra" ? 10 : p.tipo === "Planta" ? 14 : null;
+  return p.tipo === "Cátedra" ? 10 : p.tipo === "Planta" ? 14 : ["Cátedra interna","Préstamo"].includes(p.tipo) && Number(p.udc_maximas)>0 ? Number(p.udc_maximas) : null;
 }
 export function workload(a, profesor, semestre) {
   const offers = a.ofertas.filter((o) => o.semestre === semestre);
@@ -317,7 +319,7 @@ export function publishIssues(a, o) {
   ]);
   for (const p of ps) {
     const l = workload(a, p, o.semestre);
-    if (l.max === null) errors.push(`Clasifica al profesor ${p}.`);
+    if (l.max === null) errors.push(["Cátedra interna","Préstamo"].includes(has(a.profesores,p)?.tipo) ? `Define el tope semestral de UDC del profesor ${p}.` : `Clasifica al profesor ${p}.`);
     else if (l.estado === "Sobrecarga pendiente")
       errors.push(`Falta aprobación de sobrecarga para ${p}.`);
   }
@@ -354,7 +356,7 @@ export function validateAcademic(a) {
   for (const account of a.admins || [])
     if (
       account.role !== undefined &&
-      !["admin", "consulta"].includes(account.role)
+      !["admin", "superadmin", "profesor", "consulta"].includes(account.role)
     )
       fail("Rol de cuenta inválido");
   for (const key of [
@@ -402,16 +404,20 @@ export function validateAcademic(a) {
   const linked = new Set();
   for (const account of a.admins || []) {
     if (!account.profesor) continue;
-    if ((account.role || "admin") !== "admin" || !a.profesores.some((p) => p.id === account.profesor) || linked.has(account.profesor)) fail("Vinculación de profesor inválida o duplicada");
+    if (!(["admin","superadmin","profesor"].includes(account.role || "consulta")) || !a.profesores.some((p) => p.id === account.profesor) || linked.has(account.profesor)) fail("Vinculación de profesor inválida o duplicada");
     linked.add(account.profesor);
   }
   for (const p of a.profesores) {
     if (
       !nonempty(p.nombre) ||
       !nonempty(p.correo) ||
-      !["Planta", "Cátedra", "Por clasificar"].includes(p.tipo)
+      !["Planta", "Cátedra", "Cátedra interna", "Préstamo", "Por clasificar"].includes(p.tipo)
     )
       fail("Profesor inválido");
+  }
+  for(const p of a.profesores){
+    if(p.tipo==="Préstamo"&&!nonempty(p.area))fail("Indica el área de origen del profesor de préstamo.");
+    if(p.udc_maximas && (!number(Number(p.udc_maximas),0.01)))fail("Tope de carga inválido.");
   }
   for (const u of a.ufs)
     if (
@@ -540,9 +546,11 @@ export function audit(a, actor, accion, detalle, cambios = []) {
     fecha: new Date().toISOString(),
     actor,
     accion,
+    categoria: historyCategory(accion),
     detalle,
     cambios,
   });
+  if(a.auditoria.length>10000)a.auditoria=a.auditoria.slice(-10000);
   a.revision++;
 }
 export function diffAcademic(before, after) {
@@ -623,12 +631,13 @@ export function publicAcademic(a, session) {
   const copy = structuredClone(a);
   copy.salones ||= [];
   copy.prestamos ||= [];
+  copy.auditoria=copy.auditoria.map(r=>({...r,categoria:r.categoria||historyCategory(r.accion)}));
   copy.profesores = copy.profesores.map(({ passwordHash, ...p }) => ({
     ...p,
     hasPassword: !!passwordHash,
   }));
   copy.admins = copy.admins.map(({ hash, ...p }) => p);
-  if (session.role === "admin") return copy;
+  if (isAdmin(session.role)) return copy;
   if (session.role === "consulta") {
     copy.admins = [];
     copy.auditoria = [];
@@ -640,8 +649,9 @@ export function publicAcademic(a, session) {
     return copy;
   }
   const id = session.nomina;
+  const coordinated = new Set(copy.coordinaciones.filter(c=>c.profesor===id).map(c=>c.oferta));
   copy.prestamos = copy.prestamos.filter((p) => p.profesor === id);
-  copy.profesores = copy.profesores.filter((p) => p.id === id);
+  if (!coordinated.size) copy.profesores = copy.profesores.filter((p) => p.id === id);
   const ids = new Set([
     ...copy.participaciones
       .filter((p) => p.profesor === id)
@@ -651,18 +661,18 @@ export function publicAcademic(a, session) {
       .map((c) => c.oferta),
   ]);
   copy.ofertas = copy.ofertas.filter(
-    (o) => ids.has(o.id) && o.estado === "Publicada",
+    (o) => (ids.has(o.id) && o.estado === "Publicada") || coordinated.has(o.id),
   );
   const visible = new Set(copy.ofertas.map((o) => o.id));
   copy.participaciones = copy.participaciones.filter(
-    (p) => p.profesor === id && visible.has(p.oferta),
+    (p) => (p.profesor === id || coordinated.has(p.oferta)) && visible.has(p.oferta),
   );
   copy.coordinaciones = copy.coordinaciones.filter(
     (c) => c.profesor === id && visible.has(c.oferta),
   );
   copy.sesiones = copy.sesiones
-    .filter((s) => visible.has(s.oferta) && list(s.profesores).includes(id))
-    .map((s) => ({ ...s, profesores: id }));
+    .filter((s) => visible.has(s.oferta) && (coordinated.has(s.oferta) || list(s.profesores).includes(id)))
+    .map((s) => coordinated.has(s.oferta) ? s : ({ ...s, profesores: id }));
   copy.ufs = copy.ufs.filter((u) => copy.ofertas.some((o) => o.uf === u.id));
   copy.sobrecargas = copy.sobrecargas.filter((s) => s.profesor === id);
   copy.admins = [];
