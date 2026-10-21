@@ -49,7 +49,7 @@ export async function createApp({
       path.resolve(env.EXCEL_PATH || "data/Programación Arte FJ27.xlsx"),
     );
   await store.init();
-  if (!(await store.read()).academic)
+  if ((await store.read()).academic?.deliveryManualVersion !== 1)
     await store.mutate((db) => {
       migrateAcademic(db);
     });
@@ -246,7 +246,7 @@ export async function createApp({
     res.json({
       production,
       accessPolicyActive: Boolean((await store.read()).academic?.rolePolicy),
-      version: "4.2.0",
+      version: "4.2.1",
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,

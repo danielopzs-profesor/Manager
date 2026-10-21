@@ -1,3 +1,4 @@
+import roomCodes from "../shared/room-codes.json";
 import {downloadCard} from "./downloads.js";
 import { SemesterDatePicker, TimeRangePicker, explainError } from "./date-time.jsx";
 import { acceptanceMetrics, roomUtilization } from "../shared/metrics.js";
@@ -1967,7 +1968,7 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
         if (!partial && values.horario && values.horario.slice(0,5) >= values.horario.slice(6)) { setFormError("La hora de fin debe ser posterior al inicio. Corrige el horario antes de guardar."); return; }
         const defaults = {};
         if (collection === "profesores") defaults.tipo = "Cátedra";
-        if (collection === "semestres") {defaults.escuela="AD-Arquitectura, Arte y Diseño";defaults.identificador=item.id==="FJ27"?"202713":"";}
+        if (collection === "semestres") {defaults.escuela="AD-Arquitectura, Arte y Diseño";defaults.identificador=item.id==="FJ27"?"202711":"";}
         if (collection === "ufs") {
           defaults.atributos = "PMT3";
           defaults.tipo = "Materia";
@@ -2026,7 +2027,9 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
       )}
       {collection === "salones" && <>
         {field("edificio", "Edificio", { hint: "Ejemplo: CEDES o Aulas 6." })}
-        {field("codigo", "Código de salón para entrega", {required:false,hint:"Código oficial; no modifica el edificio ni el número del salón."})}
+        <label>Código de salón para entrega<input aria-label="Código de salón para entrega" list="official-room-codes" value={values.codigo||""} onChange={e=>change("codigo",e.target.value)}/><small>Conserva espacios y guiones: por ejemplo A-A6- 206. Puedes buscar en el catálogo de referencia o capturar un código oficial actualizado.</small></label>
+        <datalist id="official-room-codes">{roomCodes.map(r=><option key={r.codigo} value={r.codigo}>{r.descripcion}</option>)}</datalist>
+        {values.codigo && !roomCodes.some(r=>r.codigo===values.codigo) && <p className="muted">Este código no aparece en el catálogo de referencia. Verifícalo con Escolar; el catálogo puede no incluir salones nuevos.</p>}
         {field("numero", "Número de salón", { hint: "Ejemplo: 319 o 206; también admite letras." })}
         <p>Salón: <b>{values.edificio || "Edificio"}-{values.numero || "Número"}</b>. Su referencia interna se conserva al editar.</p>
         {field("capacidad", "Capacidad de alumnos", { type: "number", hint: "Número entero mayor a cero." })}
@@ -2034,7 +2037,7 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
         {field("horario", "Horario de trabajo", { hint: "Formato de 24 horas: 07:00-22:00. Un rango por día seleccionado." })}
       </>}
       {collection === "semestres" && <>
-        {field("identificador","Identificador del periodo para entrega",{defaultValue:item.id==="FJ27"?"202713":"",required:false,hint:"Ejemplo: 202713. Independiente del identificador interno del semestre."})}
+        {field("identificador","Identificador del periodo para entrega",{defaultValue:item.id==="FJ27"?"202711":"",required:false,hint:"Manual: FJ 2027 = 202711; AD 2027 = 202713. Verifica cuál corresponde antes de entregar; no cambia la clave interna del semestre."})}
         {field("escuela","Escuela TEC",{defaultValue:"AD-Arquitectura, Arte y Diseño",required:false})}
         <SemesterDatePicker value={values.inicio || ""} onChange={(v)=>change("inicio",v)}/>
         <p>Fechas de los periodos para calendario y formato de entrega. Si dejas un campo vacío se calcula desde el inicio del semestre; las fechas capturadas tienen prioridad.</p>

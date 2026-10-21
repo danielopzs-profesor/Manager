@@ -1,3 +1,9 @@
+## 4.2.1 (web-deploy)
+
+- Compatibilidad con ManualCargaMasiva: sede MTY, fechas yyyy-mm-dd, horas como texto y orden institucional de restricciones.
+- Atributos separados por comas sin espacios, validación de separadores del código de salón y sugerencias de 307 códigos individuales de referencia.
+- Corrección confirmada de FJ27 a 202711 al arrancar, con migración única e historial; AD27 conserva 202713.
+
 ## 4.2.0 (web-deploy)
 
 - Formato de entrega XLSX con las 29 columnas institucionales, filas por profesor/sesión/periodo y validaciones previas.

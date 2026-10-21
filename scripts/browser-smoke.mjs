@@ -71,7 +71,7 @@ try {
     await cal.getByLabel("Mes de inicio").selectOption("1");
     assert.equal(await cal.getByRole("button",{name:"Seleccionar 2 de febrero de 2027",exact:true}).isDisabled(),true);
     await cal.getByRole("button",{name:"Seleccionar 1 de febrero de 2027",exact:true}).click();
-    await cal.getByLabel("Identificador del periodo para entrega",{exact:true}).fill("202713");
+    await cal.getByLabel("Identificador del periodo para entrega",{exact:true}).fill("202711");
     await cal.getByLabel("Fecha fin · P1",{exact:true}).fill("2027-03-05");
     await cal.getByRole("button",{name:"Guardar cambios",exact:true}).click();
     await cal.waitFor({state:"hidden"});
@@ -114,7 +114,7 @@ try {
   await page.getByRole("button", { name: "+ Salón", exact: true }).click();
   await dialog.getByLabel("Edificio", {exact:true}).fill("CEDES");
   await dialog.getByLabel("Número de salón", {exact:true}).fill("319");
-  await dialog.getByLabel("Código de salón para entrega",{exact:true}).fill("A-CEDES-319");
+  await dialog.getByLabel("Código de salón para entrega",{exact:true}).fill("A-CD- 319");
   await dialog.getByLabel("Capacidad de alumnos", {exact:true}).fill("30");
   await dialog.getByLabel("Lun", {exact:true}).check();
   await dialog.getByLabel("Horario de trabajo: inicio", {exact:true}).fill("08:00");

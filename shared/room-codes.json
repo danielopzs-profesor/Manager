@@ -1,0 +1,1230 @@
+[
+  {
+    "codigo": "A-EMIS A",
+    "descripcion": "A-EMIS A SALON EMIS"
+  },
+  {
+    "codigo": "A-CI- 604",
+    "descripcion": "A-CI- 604 Ciap - Salón Escolar Cap. 24"
+  },
+  {
+    "codigo": "A-CD- 606",
+    "descripcion": "A-CD- 606 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 118",
+    "descripcion": "A-A4- 118 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 108",
+    "descripcion": "A-A4- 108 Aulas 4   Salón Escolar"
+  },
+  {
+    "codigo": "A-A6- 206",
+    "descripcion": "A-A6- 206 Aulas 6 Salón Escolar"
+  },
+  {
+    "codigo": "A-A2- 251",
+    "descripcion": "A-A2- 251 Aulas 2  Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 304",
+    "descripcion": "A-A3- 304 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 221",
+    "descripcion": "A-A4- 221 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 1106",
+    "descripcion": "A-CD- 1106 Cedes  Salon Escolar"
+  },
+  {
+    "codigo": "A-CD- 417",
+    "descripcion": "A-CD- 417 Cedes  Salon Escolar"
+  },
+  {
+    "codigo": "A-CD- 908",
+    "descripcion": "A-CD- 908 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 906",
+    "descripcion": "A-CD- 906 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 405",
+    "descripcion": "A-CD- 405 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-CD- 704",
+    "descripcion": "A-CD- 704 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- 202",
+    "descripcion": "A-A7- 202 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 216",
+    "descripcion": "A-A4- 216 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 117",
+    "descripcion": "A-A4- 117 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A2- 108-G",
+    "descripcion": "A-A2- 108-G Aulas 2  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 218",
+    "descripcion": "A-A4- 218 Aulas 4   Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 304",
+    "descripcion": "A-CD- 304 Cedes  Salon Escolar"
+  },
+  {
+    "codigo": "A-CD- 317",
+    "descripcion": "A-CD- 317 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-CD- 206",
+    "descripcion": "A-CD- 206 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-CD- 605",
+    "descripcion": "A-CD- 605 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 515",
+    "descripcion": "A-CI- 515 Ciap - Salón Escolar Cap. 30"
+  },
+  {
+    "codigo": "A-A3- 313",
+    "descripcion": "A-A3- 313 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 807",
+    "descripcion": "A-CD- 807 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 109",
+    "descripcion": "A-A3- 109 Aulas 3   Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 706",
+    "descripcion": "A-CD- 706 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-A6- 303",
+    "descripcion": "A-A6- 303 Aulas 6  Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 230",
+    "descripcion": "A-A3- 230 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 206",
+    "descripcion": "A-A4- 206 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A6- 409-B",
+    "descripcion": "A-A6- 409-B Aulas 6 - Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 231",
+    "descripcion": "A-A4- 231 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 514",
+    "descripcion": "A-CI- 514 Ciap - Salón Escolar Cap. 30"
+  },
+  {
+    "codigo": "A-A7- 401",
+    "descripcion": "A-A7- 401 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 207",
+    "descripcion": "A-A4- 207 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A6- 302",
+    "descripcion": "A-A6- 302 Aulas 6  Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 1008",
+    "descripcion": "A-CD- 1008 Cedes  Salon Escolar"
+  },
+  {
+    "codigo": "A-CB- 201",
+    "descripcion": "A-CB- 201 Centro de Biotecnología   Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 314",
+    "descripcion": "A-A3- 314 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 104",
+    "descripcion": "A-A4- 104 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- 101",
+    "descripcion": "A-A7- 101 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-A2- 108-H",
+    "descripcion": "A-A2- 108-H Aulas 2  Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 616",
+    "descripcion": "A-CD- 616 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 111",
+    "descripcion": "A-A3- 111 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 707",
+    "descripcion": "A-CD- 707 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 314",
+    "descripcion": "A-CI- 314 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-A7- 301",
+    "descripcion": "A-A7- 301 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 415",
+    "descripcion": "A-CI- 415 Ciap - Salón Escolar Cap. 30"
+  },
+  {
+    "codigo": "A-A4- 305",
+    "descripcion": "A-A4- 305 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 208",
+    "descripcion": "A-CD- 208 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-A3- 233",
+    "descripcion": "A-A3- 233 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-OFNA OFNA",
+    "descripcion": "A-OFNA OFNA Oficina del Profesor"
+  },
+  {
+    "codigo": "A-CI- 414",
+    "descripcion": "A-CI- 414 Ciap - Salón Escolar Cap. 30"
+  },
+  {
+    "codigo": "A-CI- 416",
+    "descripcion": "A-CI- 416 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-CI- 406",
+    "descripcion": "A-CI- 406 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-CD- 905",
+    "descripcion": "A-CD- 905 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 404",
+    "descripcion": "A-A4- 404 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 507",
+    "descripcion": "A-CD- 507 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 907",
+    "descripcion": "A-CD- 907 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 406",
+    "descripcion": "A-A4- 406 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A6- 405",
+    "descripcion": "A-A6- 405 Aulas 6  Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 808",
+    "descripcion": "A-CD- 808 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-A1- 315",
+    "descripcion": "A-A1- 315 Aulas 1 - Salón Escolar"
+  },
+  {
+    "codigo": "A-A2- 202",
+    "descripcion": "A-A2- 202 Aulas 2 Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 513",
+    "descripcion": "A-CI- 513 Ciap - Salón Escolar Cap. 40"
+  },
+  {
+    "codigo": "A-A2- 115-K",
+    "descripcion": "A-A2- 115-K Aulas 2  Salón Escolar"
+  },
+  {
+    "codigo": "A-A6- 103",
+    "descripcion": "A-A6- 103 A6 - 103  Laboratorio ENCHS"
+  },
+  {
+    "codigo": "A-CI- 506",
+    "descripcion": "A-CI- 506 Ciap - Salón Escolar Cap. 30"
+  },
+  {
+    "codigo": "A-CI- 306",
+    "descripcion": "A-CI- 306 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-CI- 307",
+    "descripcion": "A-CI- 307 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-A4- 131",
+    "descripcion": "A-A4- 131 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A2- 309",
+    "descripcion": "A-A2- 309 Aula activa EAAD"
+  },
+  {
+    "codigo": "A-A4- 407",
+    "descripcion": "A-A4- 407 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 320",
+    "descripcion": "A-A4- 320 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-CTEC 410",
+    "descripcion": "A-CTEC 410 Ctec - Salón Escolar Cap. 34"
+  },
+  {
+    "codigo": "A-A4- 418",
+    "descripcion": "A-A4- 418 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- 102",
+    "descripcion": "A-A7- 102 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 305",
+    "descripcion": "A-CD- 305 Cedes  Salon Escolar"
+  },
+  {
+    "codigo": "A-CI- 214",
+    "descripcion": "A-CI- 214 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-CI- 615",
+    "descripcion": "A-CI- 615 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-A7- 234",
+    "descripcion": "A-A7- 234 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 231",
+    "descripcion": "A-A3- 231 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 121",
+    "descripcion": "A-A4- 121 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- 334--",
+    "descripcion": "A-A7- 334-- A7-334-Salón Escolar"
+  },
+  {
+    "codigo": "A-A6- 305",
+    "descripcion": "A-A6- 305 Aulas 6  Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 508",
+    "descripcion": "A-CD- 508 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-A1- 314",
+    "descripcion": "A-A1- 314 Aulas 1 - Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 103",
+    "descripcion": "A-A3- 103 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 504",
+    "descripcion": "A-CI- 504 Ciap - Salón Escolar Cap. 30"
+  },
+  {
+    "codigo": "A-A4- 208",
+    "descripcion": "A-A4- 208 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 319",
+    "descripcion": "A-CI- 319 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-A4- 405",
+    "descripcion": "A-A4- 405 Aulas 4   Salón Escolar"
+  },
+  {
+    "codigo": "A-A1- 416",
+    "descripcion": "A-A1- 416 Aulas 1 - Salón Escolar - Infocus Cap. 32"
+  },
+  {
+    "codigo": "A-A6- 304",
+    "descripcion": "A-A6- 304 Aulas 6  Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 505",
+    "descripcion": "A-CD- 505 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-A4- 105",
+    "descripcion": "A-A4- 105 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-INDE INDE200",
+    "descripcion": "A-INDE INDE200 Salón indefinido capacidad 200"
+  },
+  {
+    "codigo": "A-CB- 206",
+    "descripcion": "A-CB- 206 Auditorio Comunicación"
+  },
+  {
+    "codigo": "A-CI- 517",
+    "descripcion": "A-CI- 517 Ciap - Salón Escolar Cap. 40"
+  },
+  {
+    "codigo": "A-A7- 205",
+    "descripcion": "A-A7- 205 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 321",
+    "descripcion": "A-A4- 321 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 409",
+    "descripcion": "A-A4- 409 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 317",
+    "descripcion": "A-A4- 317 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A6- 401",
+    "descripcion": "A-A6- 401 Aulas 6  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 220",
+    "descripcion": "A-CI- 220 Ciap - Salón Escolar Cap. 40"
+  },
+  {
+    "codigo": "A-CD- 416",
+    "descripcion": "A-CD- 416 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-CD- 604",
+    "descripcion": "A-CD- 604 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-A6- 403",
+    "descripcion": "A-A6- 403 Aulas 6 - Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 315",
+    "descripcion": "A-A3- 315 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 319",
+    "descripcion": "A-A4- 319 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- 402",
+    "descripcion": "A-A7- 402 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 318",
+    "descripcion": "A-A4- 318 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 312",
+    "descripcion": "A-CI- 312 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-A3- 112",
+    "descripcion": "A-A3- 112 Aulas 3   Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 708",
+    "descripcion": "A-CD- 708 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-LD- 206",
+    "descripcion": "A-LD- 206 Laboratorio Be+ IC"
+  },
+  {
+    "codigo": "A-A4- 419",
+    "descripcion": "A-A4- 419 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A1- 319",
+    "descripcion": "A-A1- 319 Aulas 1 - Salón Escolar Cap. 80"
+  },
+  {
+    "codigo": "A-A1- 413",
+    "descripcion": "A-A1- 413 Aulas 1  Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 207",
+    "descripcion": "A-CD- 207 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-A7- 305",
+    "descripcion": "A-A7- 305 Aulas 7   Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- 303",
+    "descripcion": "A-A7- 303 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 624",
+    "descripcion": "A-CI- 624 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-A4- 109",
+    "descripcion": "A-A4- 109 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 413",
+    "descripcion": "A-A3- 413 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 312",
+    "descripcion": "A-A3- 312 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-A1- 316",
+    "descripcion": "A-A1- 316 Aulas 1 - Salón Escolar Infocus Cap. 20"
+  },
+  {
+    "codigo": "A-A6- 402",
+    "descripcion": "A-A6- 402 Aulas 6   Salon Escolar"
+  },
+  {
+    "codigo": "A-CI- 623",
+    "descripcion": "A-CI- 623 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-A7- 201",
+    "descripcion": "A-A7- 201 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-A6- 301",
+    "descripcion": "A-A6- 301 Aulas 6  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 306",
+    "descripcion": "A-A4- 306 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 209",
+    "descripcion": "A-A4- 209 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- 302",
+    "descripcion": "A-A7- 302 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 622",
+    "descripcion": "A-CI- 622 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-A4- 107",
+    "descripcion": "A-A4- 107 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 217",
+    "descripcion": "A-A4- 217 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-CB- 208",
+    "descripcion": "A-CB- 208 Centro de Biotecnología    Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 505",
+    "descripcion": "A-CI- 505 Ciap - Salón Escolar Cap. 30"
+  },
+  {
+    "codigo": "A-A3- 302",
+    "descripcion": "A-A3- 302 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 805",
+    "descripcion": "A-CD- 805 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-CB- 104",
+    "descripcion": "A-CB- 104 Centro de Biotecnología   Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 1004",
+    "descripcion": "A-CD- 1004 Cedes  Salon Escolar"
+  },
+  {
+    "codigo": "A-CD- 615",
+    "descripcion": "A-CD- 615 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 238",
+    "descripcion": "A-A3- 238 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 204",
+    "descripcion": "A-A4- 204 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- 405",
+    "descripcion": "A-A7- 405 Aulas 7   Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 307",
+    "descripcion": "A-A4- 307 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 408",
+    "descripcion": "A-A4- 408 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 504",
+    "descripcion": "A-CD- 504 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-CD- 1005",
+    "descripcion": "A-CD- 1005 Cedes  Salon Escolar"
+  },
+  {
+    "codigo": "A-A2- 308-1",
+    "descripcion": "A-A2- 308-1 Aulas 2- Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 406",
+    "descripcion": "A-CD- 406 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-A1- 414",
+    "descripcion": "A-A1- 414 Aulas 1 - Salón Escolar Cap. 32"
+  },
+  {
+    "codigo": "A-CB- 209",
+    "descripcion": "A-CB- 209 Centro de Biotecnología   Salón Escolar"
+  },
+  {
+    "codigo": "A-A6- 404",
+    "descripcion": "A-A6- 404 Aulas 6  Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 414",
+    "descripcion": "A-A3- 414 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- 304",
+    "descripcion": "A-A7- 304 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 1006",
+    "descripcion": "A-CD- 1006 Cedes  Salon Escolar"
+  },
+  {
+    "codigo": "A-A1- 415",
+    "descripcion": "A-A1- 415 Aulas 1 - Salón Escolar - Infocus Cap. 30"
+  },
+  {
+    "codigo": "A-CD- 204",
+    "descripcion": "A-CD- 204 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-A4- 219",
+    "descripcion": "A-A4- 219 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 605",
+    "descripcion": "A-CI- 605 Ciap -  Salón Escolar Cap. 24"
+  },
+  {
+    "codigo": "A-A7- 103",
+    "descripcion": "A-A7- 103 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-A6- 106",
+    "descripcion": "A-A6- 106 Sala DAE"
+  },
+  {
+    "codigo": "A-A4- 220",
+    "descripcion": "A-A4- 220 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A2- 246",
+    "descripcion": "A-A2- 246 Sala de Juntas de RI"
+  },
+  {
+    "codigo": "A-A4- 304",
+    "descripcion": "A-A4- 304 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A1- 417",
+    "descripcion": "A-A1- 417 Aulas 1 - Salón Escolar - Infocus Cap. 30"
+  },
+  {
+    "codigo": "A-CD- 205",
+    "descripcion": "A-CD- 205 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-A7- 403",
+    "descripcion": "A-A7- 403 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-INDE VIRTUAL",
+    "descripcion": "A-INDE VIRTUAL Salón Virtual"
+  },
+  {
+    "codigo": "A-CI- 616",
+    "descripcion": "A-CI- 616 Ciap - Salón Escolar Cap. 30"
+  },
+  {
+    "codigo": "A-A2- 108-K",
+    "descripcion": "A-A2- 108-K Aulas 2  Salón Escolar"
+  },
+  {
+    "codigo": "A-A2- 108-F",
+    "descripcion": "A-A2- 108-F Aulas 2  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 617",
+    "descripcion": "A-CI- 617 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-CI- 407",
+    "descripcion": "A-CI- 407 Ciap  Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- 404",
+    "descripcion": "A-A7- 404 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 412",
+    "descripcion": "A-A3- 412 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 301",
+    "descripcion": "A-A3- 301 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-INDE INDE",
+    "descripcion": "A-INDE INDE Salon Indefinido"
+  },
+  {
+    "codigo": "A-A3- 102",
+    "descripcion": "A-A3- 102 Aulas 3   Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 106",
+    "descripcion": "A-A4- 106 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A6- 101",
+    "descripcion": "A-A6- 101 A6-101 Laboratorio de análisis económico"
+  },
+  {
+    "codigo": "A-A7- 334--A",
+    "descripcion": "A-A7- 334--A A7-334--A Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 1108",
+    "descripcion": "A-CD- 1108 Cedes  Salon Escolar"
+  },
+  {
+    "codigo": "A-CI- 523",
+    "descripcion": "A-CI- 523 Ciap - Salón Escolar Cap. 40"
+  },
+  {
+    "codigo": "A-A4- 205",
+    "descripcion": "A-A4- 205 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-INDE MFD",
+    "descripcion": "A-INDE MFD Salón Modelo Flexible Digital"
+  },
+  {
+    "codigo": "A-A4- 416",
+    "descripcion": "A-A4- 416 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A1- 317",
+    "descripcion": "A-A1- 317 Aulas 1   Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 316",
+    "descripcion": "A-CD- 316 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-CD- 904",
+    "descripcion": "A-CD- 904 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-CB- 102",
+    "descripcion": "A-CB- 102 Centro de Biotecnología   Salón Escolar"
+  },
+  {
+    "codigo": "A-A2- 242",
+    "descripcion": "A-A2- 242 Aulas 2  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 320",
+    "descripcion": "A-CI- 320 Ciap - Salón Escolar Cap. 36"
+  },
+  {
+    "codigo": "A-CI- 607",
+    "descripcion": "A-CI- 607 Ciap - Salón Escolar Cap. 40"
+  },
+  {
+    "codigo": "A-CI- 318",
+    "descripcion": "A-CI- 318 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-CI- 618",
+    "descripcion": "A-CI- 618 Ciap - Salón Escolar Cap. 30"
+  },
+  {
+    "codigo": "A-CD- 1105",
+    "descripcion": "A-CD- 1105 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-CI- 613",
+    "descripcion": "A-CI- 613 Ciap - Salón Escolar Cap. 40"
+  },
+  {
+    "codigo": "A-CD- 1107",
+    "descripcion": "A-CD- 1107 Cedes  Salon Escolar"
+  },
+  {
+    "codigo": "A-CI- 522",
+    "descripcion": "A-CI- 522 Ciap - Salón Escolar Cap. 40"
+  },
+  {
+    "codigo": "A-CI- 313",
+    "descripcion": "A-CI- 313 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-A4- 420",
+    "descripcion": "A-A4- 420 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- 203",
+    "descripcion": "A-A7- 203 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- 204",
+    "descripcion": "A-A7- 204 Aulas 7   Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 614",
+    "descripcion": "A-CI- 614 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-CI- 518",
+    "descripcion": "A-CI- 518 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-A3- 232",
+    "descripcion": "A-A3- 232 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-A6- 409-A",
+    "descripcion": "A-A6- 409-A Aulas 6  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 524",
+    "descripcion": "A-CI- 524 Ciap - Salón Escolar Cap. 40"
+  },
+  {
+    "codigo": "A-A6- 306",
+    "descripcion": "A-A6- 306 Aulas 6 Salón Escolar"
+  },
+  {
+    "codigo": "A-EA- 108",
+    "descripcion": "A-EA- 108 Taller"
+  },
+  {
+    "codigo": "A-CI- 405",
+    "descripcion": "A-CI- 405 Ciap  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 404",
+    "descripcion": "A-CI- 404 Ciap - Salón Escolar Cap. 30"
+  },
+  {
+    "codigo": "A-INDE MFD30",
+    "descripcion": "A-INDE MFD30 Salón Modelo Flexible Digital capacidad 30"
+  },
+  {
+    "codigo": "A-A4- 120",
+    "descripcion": "A-A4- 120 Aulas 4   Salón Escolar"
+  },
+  {
+    "codigo": "A-CD- 1104",
+    "descripcion": "A-CD- 1104 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-A4- 421",
+    "descripcion": "A-A4- 421 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-CB- 103",
+    "descripcion": "A-CB- 103 Centro de Biotecnología   Salón Escolar"
+  },
+  {
+    "codigo": "A-A2- 134",
+    "descripcion": "A-A2- 134 Aulas 2 Salón ESCOLAR"
+  },
+  {
+    "codigo": "A-A4- 417",
+    "descripcion": "A-A4- 417 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 417",
+    "descripcion": "A-CI- 417 Ciap - Salón Escolar Cap. 30"
+  },
+  {
+    "codigo": "A-A4- 316",
+    "descripcion": "A-A4- 316 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 418",
+    "descripcion": "A-CI- 418 Ciap - Salón Escolar Cap. 35"
+  },
+  {
+    "codigo": "A-A7- 104",
+    "descripcion": "A-A7- 104 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 516",
+    "descripcion": "A-CI- 516 Ciap - Salón Escolar Cap. 30"
+  },
+  {
+    "codigo": "A-CD- 506",
+    "descripcion": "A-CD- 506 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-A3- 110",
+    "descripcion": "A-A3- 110 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 415",
+    "descripcion": "A-A3- 415 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- 105",
+    "descripcion": "A-A7- 105 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-CI- 413",
+    "descripcion": "A-CI- 413 Ciap   Salón Escolar"
+  },
+  {
+    "codigo": "A-A2- 115-J",
+    "descripcion": "A-A2- 115-J Aulas 2   Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 308",
+    "descripcion": "A-A4- 308 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A1- 216",
+    "descripcion": "A-A1- 216 A1-216 Cap. 30"
+  },
+  {
+    "codigo": "A-A3- 303",
+    "descripcion": "A-A3- 303 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 309",
+    "descripcion": "A-A4- 309 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A4- 116",
+    "descripcion": "A-A4- 116 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-AR- 101-D",
+    "descripcion": "A-AR- 101-D Talleres de Diseño Industrial"
+  },
+  {
+    "codigo": "A-A2- 301-C",
+    "descripcion": "A-A2- 301-C Aulas 2  Salón Escolar"
+  },
+  {
+    "codigo": "A-AR- 101-P1",
+    "descripcion": "A-AR- 101-P1 Talleres de Arquitectura"
+  },
+  {
+    "codigo": "A-AR- 101-E",
+    "descripcion": "A-AR- 101-E Talleres de Diseño Industrial"
+  },
+  {
+    "codigo": "A-AR- 201-P5",
+    "descripcion": "A-AR- 201-P5 Talleres de Arquitectura"
+  },
+  {
+    "codigo": "A-AR- 201-P6",
+    "descripcion": "A-AR- 201-P6 Talleres de Arquitectura"
+  },
+  {
+    "codigo": "A-AR- 201-P3",
+    "descripcion": "A-AR- 201-P3 Talleres de Arquitectura"
+  },
+  {
+    "codigo": "A-AR- 201-P4",
+    "descripcion": "A-AR- 201-P4 Talleres de Arquitectura"
+  },
+  {
+    "codigo": "A-AR- 101-L",
+    "descripcion": "A-AR- 101-L Sala de Cátedra ARQ"
+  },
+  {
+    "codigo": "A-AR- 201-P1",
+    "descripcion": "A-AR- 201-P1 Talleres de Arquitectura"
+  },
+  {
+    "codigo": "A-AR- 101-F",
+    "descripcion": "A-AR- 101-F Sala de Cátedra ARQ"
+  },
+  {
+    "codigo": "A-AR- 101-G",
+    "descripcion": "A-AR- 101-G Talleres de Arquitectura"
+  },
+  {
+    "codigo": "A-AR- 101-J",
+    "descripcion": "A-AR- 101-J Talleres de Arquitectura"
+  },
+  {
+    "codigo": "A-CD- 1007",
+    "descripcion": "A-CD- 1007 Cedes  Salon Escolar"
+  },
+  {
+    "codigo": "A-A3- 316",
+    "descripcion": "A-A3- 316 A3-316-B Procesos de Negocios (28)"
+  },
+  {
+    "codigo": "A-INDE MFD32",
+    "descripcion": "A-INDE MFD32 Salón Modelo Flexible Digital capacidad 32"
+  },
+  {
+    "codigo": "A-INDE MFD50",
+    "descripcion": "A-INDE MFD50 Salón Modelo Flexible Digital capacidad 50"
+  },
+  {
+    "codigo": "A-A4- 119",
+    "descripcion": "A-A4- 119 Aulas 4  Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- LDS03",
+    "descripcion": "A-A7- LDS03 Búnker de Diseño Industrial"
+  },
+  {
+    "codigo": "A-EA- 109",
+    "descripcion": "A-EA- 109 Taller"
+  },
+  {
+    "codigo": "A-EA- 111",
+    "descripcion": "A-EA- 111 Taller de Arte"
+  },
+  {
+    "codigo": "A-EA- 112",
+    "descripcion": "A-EA- 112 Taller"
+  },
+  {
+    "codigo": "A-CD- 404",
+    "descripcion": "A-CD- 404 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-CI- 213",
+    "descripcion": "A-CI- 213 CI-213 Cap. 20"
+  },
+  {
+    "codigo": "A-CI- 212",
+    "descripcion": "A-CI- 212 CI-212 Cap. 22"
+  },
+  {
+    "codigo": "A-CI- 606",
+    "descripcion": "A-CI- 606 Ciap - Salón Escolar Cap. 40"
+  },
+  {
+    "codigo": "A-CD- 806",
+    "descripcion": "A-CD- 806 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-A1- 418",
+    "descripcion": "A-A1- 418 Aulas 1 - Salón Escolar Cap. 80"
+  },
+  {
+    "codigo": "A-A7- 436",
+    "descripcion": "A-A7- 436 Aulas 7  Salón Escolar"
+  },
+  {
+    "codigo": "A-A3- 205",
+    "descripcion": "A-A3- 205 A3-205 Ciencia de Datos (32)"
+  },
+  {
+    "codigo": "A-A3- 416",
+    "descripcion": "A-A3- 416 A3-416 Negocios Electrónicos (32)"
+  },
+  {
+    "codigo": "A-A3- 203",
+    "descripcion": "A-A3- 203 A3-203 Gráficas y HPC (32)"
+  },
+  {
+    "codigo": "A-A3- 305",
+    "descripcion": "A-A3- 305 A3-305 Visualización de Datos (34)"
+  },
+  {
+    "codigo": "A-CI- 222",
+    "descripcion": "A-CI- 222 Ciap - Salón Audiovisual Cap. 25"
+  },
+  {
+    "codigo": "A-CI- 106",
+    "descripcion": "A-CI- 106 CI-106 Cap. 20"
+  },
+  {
+    "codigo": "A-EMIS CITES",
+    "descripcion": "A-EMIS CITES CITES - Escuela de Medicina"
+  },
+  {
+    "codigo": "A-A2- 319",
+    "descripcion": "A-A2- 319 A2-319-Laboratorio de Producción musical"
+  },
+  {
+    "codigo": "A-A2- 317",
+    "descripcion": "A-A2- 317 A2-317-Laboratorio de teoría musical Cap. 24"
+  },
+  {
+    "codigo": "A-CB- 220",
+    "descripcion": "A-CB- 220 Laboratorio de Enzimología y Biocatálisis"
+  },
+  {
+    "codigo": "A-CB- 213",
+    "descripcion": "A-CB- 213 Laboratorio de Desarrollo y Regeneración de Tejido"
+  },
+  {
+    "codigo": "A-CB- 211",
+    "descripcion": "A-CB- 211 Laboratorio de Manipulación Genética y Diagnóstico"
+  },
+  {
+    "codigo": "A-CB- 224",
+    "descripcion": "A-CB- 224 Laboratorio de Microbiología"
+  },
+  {
+    "codigo": "A-EMIS LABO3",
+    "descripcion": "A-EMIS LABO3 SALON EMIS"
+  },
+  {
+    "codigo": "A-HOSP HOSP",
+    "descripcion": "A-HOSP HOSP HOSP A-HOSP"
+  },
+  {
+    "codigo": "A-INDE ESCOLAR32",
+    "descripcion": "A-INDE ESCOLAR32 Salón Indefinido Escolar 32"
+  },
+  {
+    "codigo": "A-CI- 507",
+    "descripcion": "A-CI- 507 CI-507 Cap. 40"
+  },
+  {
+    "codigo": "A-EMIS CITES45",
+    "descripcion": "A-EMIS CITES45 CITES - Escuela de Medicina 45"
+  },
+  {
+    "codigo": "A-LD- 109A",
+    "descripcion": "A-LD- 109A Laboratorio de Materiales y estructuras"
+  },
+  {
+    "codigo": "A-A3- 104",
+    "descripcion": "A-A3- 104 Aulas 3  Salón Escolar"
+  },
+  {
+    "codigo": "A-AR- 101-K",
+    "descripcion": "A-AR- 101-K Talleres de Arquitectura"
+  },
+  {
+    "codigo": "A-AR- 101-I",
+    "descripcion": "A-AR- 101-I Talleres de Arquitectura"
+  },
+  {
+    "codigo": "A-AR- 101-H",
+    "descripcion": "A-AR- 101-H Talleres de Arquitectura"
+  },
+  {
+    "codigo": "A-AR- 101-M-1",
+    "descripcion": "A-AR- 101-M-1 Salón Teórico Arquitectura"
+  },
+  {
+    "codigo": "A-AR- 101-M",
+    "descripcion": "A-AR- 101-M Salón Teórico Arquitectura"
+  },
+  {
+    "codigo": "A-OFNA OFNA30",
+    "descripcion": "A-OFNA OFNA30 Oficina del profesor"
+  },
+  {
+    "codigo": "A-CD- 705",
+    "descripcion": "A-CD- 705 Cedes Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- 435",
+    "descripcion": "A-A7- 435 A7-435 Sistemas Embebidos e Interfaces. (33)"
+  },
+  {
+    "codigo": "A-A2- 301-D",
+    "descripcion": "A-A2- 301-D Aulas 2- Salón Escolar Cap. 24"
+  },
+  {
+    "codigo": "A-CD- 306",
+    "descripcion": "A-CD- 306 Cedes Salon Escolar"
+  },
+  {
+    "codigo": "A-CB- 202",
+    "descripcion": "A-CB- 202 Centro de Biotecnología   Salón Escolar"
+  },
+  {
+    "codigo": "A-CB- 203",
+    "descripcion": "A-CB- 203 Centro de Biotecnología    Salón Escolar"
+  },
+  {
+    "codigo": "A-INDE CED",
+    "descripcion": "A-INDE CED Salón Curso Estudio Dirigido"
+  },
+  {
+    "codigo": "A-A4- 125",
+    "descripcion": "A-A4- 125 Oficina"
+  },
+  {
+    "codigo": "A-OFNA OFNA80",
+    "descripcion": "A-OFNA OFNA80 Oficina del Profesor"
+  },
+  {
+    "codigo": "A-A1- 116",
+    "descripcion": "A-A1- 116 Aulas 1 - Salón Escolar"
+  },
+  {
+    "codigo": "A-A7- 336",
+    "descripcion": "A-A7- 336 A7-336 Laboratorio de Térmica y Fluidos"
+  }
+]

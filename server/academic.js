@@ -12,8 +12,16 @@ const has = (xs, id) => xs.find((x) => x.id === id);
 const nonempty = (v) => typeof v === "string" && v.trim().length > 0;
 const number = (v, min = 0) => Number.isFinite(v) && v >= min;
 function deliveryDefaults(a) {
+ if(a.deliveryManualVersion !== 1){
+   const current=a.semestres.find(s=>s.id === "FJ27");
+   if(current?.identificador === "202713"){
+     current.identificador="202711";
+     audit(a,"Sistema","Actualizar identificador institucional FJ27","ManualCargaMasiva: FJ 2027 corresponde a 202711. Se corrigió 202713 según confirmación del responsable.");
+   }
+   a.deliveryManualVersion=1;
+ }
  for(const u of a.ufs) u.atributos ??= "PMT3";
- for(const s of a.semestres){s.identificador ??= s.id === "FJ27" ? "202713" : "";s.escuela ??= "AD-Arquitectura, Arte y Diseño";}
+ for(const s of a.semestres){s.identificador ??= s.id === "FJ27" ? "202711" : "";s.escuela ??= "AD-Arquitectura, Arte y Diseño";}
  for(const p of a.profesores)p.nomina ??= /^L\d+$/i.test(p.id) ? p.id : "";
  return a;
 }
