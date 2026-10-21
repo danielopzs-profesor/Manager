@@ -130,6 +130,11 @@ try {
   await dialog.getByRole("button", { name: "Guardar cambios" }).click();
   await dialog.waitFor({ state: "hidden" });
 
+  await page.getByRole("button",{name:"Datos",exact:true}).click();
+  const [draftDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("button",{name:"Descargar formato de entrega",exact:true}).click()]);
+  await draftDownload.saveAs("/tmp/arte-screens/Formato_Entrega_Borrador.xlsx");
+  await page.getByRole("button",{name:"Ofertas",exact:true}).click();
+  await page.getByRole("button",{name:"Ver asignación →"}).first().click();
   await page
     .getByRole("button", { name: "Publicar oferta", exact: true })
     .click();

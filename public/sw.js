@@ -1,4 +1,4 @@
-const CACHE = "coordinacion-academica-v4.2.1";
+const CACHE = "coordinacion-academica-v4.2.2";
 self.addEventListener("install", (e) => {
   e.waitUntil(
     caches

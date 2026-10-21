@@ -1484,6 +1484,7 @@ function App() {
                       para importar y exportar; no sincroniza archivos de tu
                       computadora.
                     </p>
+                    <p className="muted">El formato de entrega incluye ofertas publicadas y en borrador del semestre seleccionado. Completa sus datos de entrega; descargar no publica ni confirma las ofertas.</p>
                     <div className="buttons bulk">
                       <a className="button" href="/api/academic/export">
                         Descargar Excel / plantilla

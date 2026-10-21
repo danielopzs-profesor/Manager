@@ -1,18 +1,28 @@
 import ExcelJS from 'exceljs';
-import {calendar,list,publishIssues,validSessionTime} from './academic.js';
+import {calendar,list,sessionIssues,validSessionTime} from './academic.js';
 export const deliveryHeaders=['SEDE','PERIODO','ESCUELA TEC','DEPARTAMENTO','ESTATUS DEL GRUPO','CLAVE','ASIGNATURA','GRUPO','ATRIBUTOS','NOMINA','PROFESOR','RESPONSABILIDAD','TITULAR','FECHA INICIO','FECHA FIN','HORA INICIO','HORA FIN','DIAS','CODIGO EDIFICIOS Y SALAS','SALAS','SESCODE','REFERENCIAS','COMPONENTE','VACANTES','RESTRICCIONES CARRERA','RESTRICCIONES PROGRAMA','RESTRICCIONES CLASE (CLASS)','RESTRICCIONES COHORTE','RESTRICCIONES ATRIBUTO ESTUDIANTE'];
 const dayCodes={Lun:'Lu',Mar:'Ma','Mié':'Mi',Jue:'Ju',Vie:'Vi','Sáb':'Sa',Dom:'Do'};
 export async function exportDelivery(a,semesterId){
  const semester=a.semestres.find(s=>s.id===semesterId);
  if(!semester)throw Error('Selecciona un semestre válido para descargar el formato de entrega.');
  if(!semester.identificador?.trim())throw Error('Completa el identificador del periodo en Editar semestre antes de descargar el formato de entrega.');
- const offers=a.ofertas.filter(o=>o.semestre===semesterId&&o.estado==='Publicada');
- if(!offers.length)throw Error('No hay ofertas publicadas en este semestre. Completa y publica las ofertas antes de descargar el formato de entrega.');
+ const offers=a.ofertas.filter(o=>o.semestre===semesterId);
+ if(!offers.length)throw Error('No hay ofertas en este semestre. Crea una oferta antes de descargar el formato de entrega.');
  const rows=[],errors=[];
  for(const o of offers){
   const uf=a.ufs.find(u=>u.id===o.uf);const label=`Grupo ${o.grupo} (${uf?.nombre||o.uf})`;
-  errors.push(...publishIssues(a,o).map(e=>`${label}: ${e}`));
+  const parts=a.participaciones.filter(p=>p.oferta===o.id),sessions=a.sesiones.filter(s=>s.oferta===o.id);
+  const missing=[];
+  if(!uf)missing.push("Selecciona una unidad de formación existente.");
+  if(!o.grupo?.trim())missing.push("Completa el número de grupo.");
+  if(!list(o.periodos).length)missing.push("Selecciona los periodos del grupo.");
+  if(Math.abs(parts.reduce((sum,p)=>sum+p.porcentaje,0)-100)>0.00001)missing.push("La responsabilidad debe sumar 100 %.");
+  if(!sessions.length)missing.push("Falta programar las sesiones.");
+  for(const segment of list(o.periodos))if(!sessions.some(s=>list(s.segmentos).includes(segment)))missing.push(`Faltan sesiones en ${segment}.`);
+  for(const part of parts)if(!sessions.some(s=>list(s.profesores).includes(part.profesor)))missing.push(`Faltan sesiones para ${part.profesor}.`);
+  errors.push(...missing.map(e=>`${label}: ${e}`));
   for(const session of a.sesiones.filter(s=>s.oferta===o.id)){
+   errors.push(...sessionIssues(a,session).map(e=>`${label}: ${e}`));
    const room=a.salones.find(r=>r.id===session.aula);
    if(!room?.codigo?.trim())errors.push(`${label}: completa el código oficial del salón en Salones.`);
    if(room?.codigo && !/^A-[A-Z0-9]+(?:- | )[^,\r\n]+$/.test(room.codigo))errors.push(`${label}: el código de salón debe conservar los espacios y guiones oficiales; por ejemplo A-A6- 206. Revísalo en Salones con el catálogo de referencia.`);
@@ -21,7 +31,7 @@ export async function exportDelivery(a,semesterId){
     if(!segment.inicio||!segment.fin){errors.push(`${label}: completa las fechas de ${segment.id} en Editar semestre.`);continue;}
     for(const teacherId of list(session.profesores)){
      const professor=a.profesores.find(p=>p.id===teacherId),part=a.participaciones.find(p=>p.oferta===o.id&&p.profesor===teacherId);
-     if(!professor||!part)continue;
+     if(!professor||!part||!uf)continue;
      if(!professor.nomina?.trim())errors.push(`${label}: completa la nómina de ${professor.nombre} en Profesores.`);
      if(!Number.isInteger(part.porcentaje))errors.push(`${label}: ${professor.nombre} tiene responsabilidad decimal; el formato requiere un porcentaje entero. Corrige la asignación antes de exportar.`);
      rows.push(['MTY',semester.identificador,semester.escuela||'','DART-D. Arte','ACTIVO',uf.id,uf.nombre,o.grupo,list(uf.atributos??'PMT3').join(','),professor.nomina||'',professor.nombre,part.porcentaje,1,new Date(segment.inicio+'T00:00:00Z'),new Date(segment.fin+'T00:00:00Z'),session.horario.slice(0,5)+':00',session.horario.slice(6)+':00',Object.keys(dayCodes).filter(d=>list(session.dias).includes(d)).map(d=>dayCodes[d]).join(''),room?.codigo||'',room?.nombre||session.aula,'P','','CL',Number(o.alumnos||0),'','','','','']);

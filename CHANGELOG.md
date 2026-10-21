@@ -1,3 +1,8 @@
+## 4.2.2 (web-deploy)
+
+- El formato de entrega incluye ofertas en borrador y publicadas del semestre seleccionado.
+- Validación de datos de entrega independiente de publicación, coordinación y aprobación de sobrecarga; la descarga no modifica estados ni respuestas.
+
 ## 4.2.1 (web-deploy)
 
 - Compatibilidad con ManualCargaMasiva: sede MTY, fechas yyyy-mm-dd, horas como texto y orden institucional de restricciones.
