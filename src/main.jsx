@@ -7,7 +7,7 @@ import "@fontsource-variable/manrope";
 import "@fontsource-variable/sora";
 import "./style.css";
 import "./theme.css";
-import { Brand, Icon, SemesterIllustration, navIcons } from "./visual.jsx";
+import { Brand, Icon, IconAction, SemesterIllustration, navIcons } from "./visual.jsx";
 const segments = ["P1", "I1", "P2", "I2", "P3"];
 const labels = {
   P1: "Periodo 1",
@@ -626,50 +626,17 @@ function App() {
           </p>
         )}
         {admin && (
-          <div className="buttons">
-            {superAdmin && (()=>{const account=db.admins.find(a=>a.profesor===p.id||a.id===p.correo.toLowerCase());return <label className="role-check"><input type="checkbox" checked={["admin","superadmin"].includes(account?.role || p.accessRole)} disabled={busy||p.protectedAccess||account?.protegido||account?.role==="superadmin"} onChange={e=>run(()=>act("/academic/professor-role",{profesor:p.id,enabled:e.target.checked}))}/>Administrador{account?.role==="superadmin"||p.protectedAccess?" (superadministrador permanente)":""}</label>})()}
-            <button className="secondary" onClick={()=>downloadCard(p.nombre,[p.correo,"Contrato: "+p.tipo,...(p.area?["Área de origen: "+p.area]:[]),"Carga total: "+fmt(w.total)+" UDC", "Disponible: "+fmt(w.disponible)+" UDC",...assigned.map(o=>(u(o)?.nombre||o.uf)+" · Grupo "+o.grupo)])}>Descargar ficha JPEG</button>
-            <button onClick={() => open("participaciones", { profesor: p.id })}>
-              Asignar unidad de formación
-            </button>
-            <button className="secondary" onClick={() => open("profesores", p)}>
-              Editar
-            </button>
-            <button
-              className="secondary"
-              onClick={() =>
-                setModal({
-                  kind: "professorPassword",
-                  profesor: p.id,
-                  revision: db.revision,
-                })
-              }
-            >
-              {p.hasPassword ? "Restablecer contraseña" : "Configurar acceso"}
-            </button>
-            <button
-              className="secondary"
-              disabled={busy}
-              onClick={() => notify(p)}
-            >
-              Compartir oferta
-            </button>
-            {w.estado === "Sobrecarga pendiente" && p.id !== myProfessor && (
-              <button
-                onClick={() =>
-                  setModal({
-                    kind: "approve",
-                    profesor: p.id,
-                    revision: db.revision,
-                  })
-                }
-              >
-                Aprobar sobrecarga
-              </button>
-            )}
-            <button className="plain" onClick={() => remove("profesores", p)}>
-              Eliminar
-            </button>
+          <div className="professor-controls">
+            <div className="professor-icon-actions" role="group" aria-label={`Acciones de ${p.nombre}`}>
+              <IconAction icon="download" label="Descargar ficha JPEG" onClick={()=>downloadCard(p.nombre,[p.correo,"Contrato: "+p.tipo,...(p.area?["Área de origen: "+p.area]:[]),"Carga total: "+fmt(w.total)+" UDC","Disponible: "+fmt(w.disponible)+" UDC",...assigned.map(o=>(u(o)?.nombre||o.uf)+" · Grupo "+o.grupo)])}/>
+              <IconAction icon="add" label="Asignar unidad de formación" onClick={()=>open("participaciones",{profesor:p.id})}/>
+              <IconAction icon="edit" label="Editar" onClick={()=>open("profesores",p)}/>
+              <IconAction icon="share" label="Compartir oferta" disabled={busy} onClick={()=>notify(p)}/>
+              <IconAction icon="delete" label="Eliminar" danger disabled={p.protectedAccess || db.admins.some(a=>a.profesor===p.id && a.role==="superadmin")} tooltip={p.protectedAccess?"Este perfil de superadministrador está protegido":"Eliminar profesor"} onClick={()=>remove("profesores",p)}/>
+            </div>
+            <button className="secondary professor-password" onClick={()=>setModal({kind:"professorPassword",profesor:p.id,revision:db.revision})}>{p.hasPassword?"Restablecer contraseña":"Configurar acceso"}</button>
+            {w.estado === "Sobrecarga pendiente" && p.id !== myProfessor && <button onClick={()=>setModal({kind:"approve",profesor:p.id,revision:db.revision})}>Aprobar sobrecarga</button>}
+            {superAdmin && (()=>{const account=db.admins.find(a=>a.profesor===p.id||a.id===p.correo.toLowerCase());return <label className="role-check professor-role-check"><input type="checkbox" checked={["admin","superadmin"].includes(account?.role || p.accessRole)} disabled={busy||p.protectedAccess||account?.protegido||account?.role==="superadmin"} onChange={e=>run(()=>act("/academic/professor-role",{profesor:p.id,enabled:e.target.checked}))}/>Administrador{account?.role==="superadmin"||p.protectedAccess?" (superadministrador permanente)":""}</label>})()}
           </div>
         )}
       </article>
@@ -1800,6 +1767,7 @@ function App() {
                 )}
                 {modal.kind === "admin" && (
                   <>
+                    {modal.item && <input type="hidden" name="combinar" value="1"/>}
                     <label>
                       Usuario
                       <input
@@ -1834,12 +1802,13 @@ function App() {
                       </select>
                     </label>
                     <label>
-                      Profesor vinculado (opcional, solo administradores)
+                      Combinar con perfil de profesor (opcional)
                       <select name="profesor" defaultValue={modal.item?.profesor || modal.profesor || ""}>
                         <option value="">Sin vinculación docente</option>
                         {db.profesores.map((p) => <option key={p.id} value={p.id}>{p.nombre} · {p.id}</option>)}
                       </select>
                     </label>
+                    <p className="muted">Selecciona el profesor que corresponde a esta cuenta. Se reutilizan su perfil y asignaciones, sin crear otro docente. La cuenta administrativa conserva su contraseña; también podrá entrar con el correo del perfil vinculado.</p>
                     <label>
                       Contraseña{" "}
                       {modal.item ? "(vacía para conservar la actual)" : ""}
@@ -1896,19 +1865,20 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
   const { collection, item } = modal;
   const [values, setValues] = useState({ ...item });
   const [formError,setFormError] = useState("");
-  const change = (key, v) => setValues((x) => ({ ...x, [key]: v }));
+  const partial = ["ofertas","sesiones"].includes(collection);
+  const change = (key, v) => setValues((x) => ({ ...x, [key]: v, ...(collection === "ofertas" && ["duracion","modalidad"].includes(key) ? {periodos:"",...(key === "modalidad" ? {duracion:v === "Intensiva" ? 1 : 5} : {})} : {}) }));
   const field = (
     key,
     label,
     {
       type = "text",
       options,
-      required = true,
+      required = !partial || ["oferta","uf","semestre"].includes(key),
       readOnly = false,
       hint,
       defaultValue = "",
     } = {},
-  ) => key === "horario" ? <TimeRangePicker key={key} label={label} value={values[key] || ""} onChange={(v)=>change(key,v)}/> : (
+  ) => key === "horario" ? <TimeRangePicker key={key} label={label} required={!partial} value={values[key] || ""} onChange={(v)=>change(key,v)}/> : (
     <label key={key}>
       {label}
       {options ? (
@@ -1988,7 +1958,7 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
         e.preventDefault();
         setFormError("");
         if (collection === "semestres" && !values.inicio) { setFormError("Elige un lunes en el calendario para definir el inicio del semestre."); return; }
-        if (values.horario && values.horario.slice(0,5) >= values.horario.slice(6)) { setFormError("La hora de fin debe ser posterior al inicio. Corrige el horario antes de guardar."); return; }
+        if (!partial && values.horario && values.horario.slice(0,5) >= values.horario.slice(6)) { setFormError("La hora de fin debe ser posterior al inicio. Corrige el horario antes de guardar."); return; }
         const defaults = {};
         if (collection === "profesores") defaults.tipo = "Cátedra";
         if (collection === "ufs") {
@@ -2006,6 +1976,7 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
         onSave({ ...defaults, ...values, id: item.id || values.id });
       }}
     >
+      {partial && <p className="alert">Puedes guardar datos parciales como borrador. Completa y revisa las sesiones antes de publicar; no se borrarán al cambiar los periodos del grupo.</p>}
       {formError && <p className="alert error" role="alert">{formError}</p>}
       {["profesores", "ufs", "semestres"].includes(collection) &&
         field(

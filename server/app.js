@@ -170,7 +170,9 @@ export async function createApp({
       const db = await store.read();
       const accounts = db.academic?.admins || [];
       let nomina, professorVersion, facultyRole;
-      const adminAccount = accounts.find((a) => a.id === username);
+      const linkedAccounts=accounts.filter(a=>a.emailLogin && db.academic?.profesores.some(p=>p.id===a.profesor&&String(p.correo).trim().toLowerCase()===username));
+      if(!accounts.some(a=>a.id===username)&&linkedAccounts.length>1)return res.status(401).json({error:"El correo está asociado a varias cuentas. Solicita al administrador que revise la vinculación."});
+      const adminAccount = accounts.find((a) => a.id === username) || linkedAccounts[0];
       const bootstrap = !accounts.length && !username;
       if (adminAccount) {
         if (!(await passwordMatches(password, adminAccount.hash)))
@@ -244,7 +246,7 @@ export async function createApp({
     res.json({
       production,
       accessPolicyActive: Boolean((await store.read()).academic?.rolePolicy),
-      version: "4.0.0",
+      version: "4.1.0",
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,

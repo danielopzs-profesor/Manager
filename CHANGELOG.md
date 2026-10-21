@@ -1,3 +1,10 @@
+## 4.1.0 (web-deploy)
+
+- Edición de periodos conserva las sesiones como pendientes en borrador; mensajes específicos para corregirlas antes de publicar.
+- Guardado parcial de grupos y sesiones, sin retirar los controles de aforo, disponibilidad y empalmes confirmados.
+- Fichas docentes con iconos Material rellenos, etiquetas accesibles y casilla administrativa al pie.
+- Combinación explícita de cuenta administrativa con perfil docente existente, conservando asignaciones y contraseña administrativa.
+
 ## 4.0.0 (web-deploy)
 
 - Rama de publicación independiente de main y arranque de producción para Hostinger con política nominativa verificada.

@@ -1229,3 +1229,9 @@ footer {
 @media(max-width:760px){.dashboard-grid{grid-template-columns:1fr;}.date-picker .toolbar{flex-wrap:wrap;}.date-grid button{padding:10px 0;}}
 .role-check {display:inline-flex;align-items:center;gap:8px;margin:0;padding:8px;font-weight:600;}
 .role-check input {width:20px;height:20px;margin:0;}
+.professor-controls{display:flex;flex-direction:column;gap:12px;margin-top:18px;}
+.professor-icon-actions{display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:center;gap:8px;width:100%;}
+.professor-icon-button{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;flex:0 0 44px;padding:0;border:0;border-radius:50%;background:#095de4;color:#fff;box-shadow:0 4px 10px #095de420;}
+.professor-icon-button:hover{background:#0649b5;transform:translateY(-1px);}.professor-icon-button:focus-visible{outline:3px solid #092a57;outline-offset:3px;}
+.professor-icon-button--danger{background:#d9304f;}.professor-icon-button--danger:hover{background:#ad1d38;}.professor-icon-button:disabled{opacity:.45;transform:none;cursor:not-allowed;}
+.professor-password{align-self:center;}.professor-role-check{justify-content:center;align-self:center;text-align:center;margin-top:5px;}

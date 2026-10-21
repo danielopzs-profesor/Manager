@@ -205,6 +205,7 @@ export function distribution(a, profesor, semestre) {
         list(s.segmentos).includes(segmento),
     );
     const weekly = ss.reduce((n, s) => {
+      if (!validSessionTime(s)) return n;
       const [start, end] = s.horario.split("-");
       const minutes = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
       return n + ((minutes(end) - minutes(start)) / 60) * list(s.dias).length;
@@ -240,7 +241,7 @@ export function contract(a, profesor, semestre) {
 }
 export function conflicts(a, semestre) {
   const sessions = a.sesiones.filter(
-    (s) => has(a.ofertas, s.oferta)?.semestre === semestre,
+    (s) => has(a.ofertas, s.oferta)?.semestre === semestre && validSessionTime(s),
   );
   const out = [];
   for (let i = 0; i < sessions.length; i++)
@@ -277,15 +278,26 @@ export function groupBase(o) {
     null
   );
 }
+export function validSessionTime(s) {return /^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$/.test(s.horario) && s.horario.slice(0,5)<s.horario.slice(6);}
+export function sessionIssues(a,s) {
+ const o=has(a.ofertas,s.oferta), issues=[];
+ if(!o)return ["Selecciona el grupo de esta sesión."];
+ if(!nonempty(s.aula))issues.push("Falta seleccionar el salón de la sesión.");
+ if(!validSessionTime(s))issues.push("Completa las horas de inicio y fin; la salida debe ser posterior a la entrada.");
+ if(!list(s.dias).length||list(s.dias).some(d=>!DAYS.includes(d)))issues.push("Selecciona los días de la sesión.");
+ if(!list(s.segmentos).length||list(s.segmentos).some(seg=>!segments(o).includes(seg)))issues.push(`Revisa los periodos de la sesión: deben pertenecer a ${o.periodos || 'los periodos pendientes del grupo'}. Puedes corregirlos en Sesiones y horarios.`);
+ if(!list(s.profesores).length||list(s.profesores).some(p=>!a.participaciones.some(x=>x.oferta===o.id&&x.profesor===p)))issues.push("Selecciona docentes con responsabilidad asignada en este grupo.");
+ if(o.modalidad==='Intensiva'&&list(s.dias).some(d=>['Sáb','Dom'].includes(d)))issues.push("Las intensivas se programan de lunes a viernes.");
+ return issues;
+}
 export function roomIssues(a, session) {
   const room = (a.salones || []).find((r) => r.id === session.aula);
   if (!room) return [];
-  if (typeof session.horario !== "string") return ["Horario de sesión inválido"];
   const o = a.ofertas.find((o) => o.id === session.oferta);
   const issues = [];
   if (list(session.dias).some((d) => !list(room.dias).includes(d)) ||
-      session.horario.slice(0,5) < room.horario.slice(0,5) ||
-      session.horario.slice(6) > room.horario.slice(6)) issues.push(`La sesión está fuera del horario de trabajo de ${room.nombre}: ${room.dias}, ${room.horario}. Elige uno de esos días y horas dentro de ese rango.`);
+      (validSessionTime(session) && (session.horario.slice(0,5) < room.horario.slice(0,5) ||
+      session.horario.slice(6) > room.horario.slice(6)))) issues.push(`La sesión está fuera del horario de trabajo de ${room.nombre}: ${room.dias}, ${room.horario}. Elige uno de esos días y horas dentro de ese rango.`);
   if (Number(o?.alumnos || 0) > room.capacidad) issues.push(`El grupo tiene ${o?.alumnos} alumnos y ${room.nombre} tiene capacidad para ${room.capacidad}. Selecciona un salón más grande o corrige el número de alumnos.`);
   return issues;
 }
@@ -294,6 +306,8 @@ export function publishIssues(a, o) {
   const parts = a.participaciones.filter((p) => p.oferta === o.id);
   if (Math.abs(parts.reduce((n, p) => n + p.porcentaje, 0) - 100) > 0.00001)
     errors.push("La responsabilidad debe sumar 100 %.");
+  if (!o.clave.trim()) errors.push("Falta la clave única del grupo.");
+  if (!segments(o).length) errors.push("Selecciona los periodos del grupo.");
   if (!o.grupo.trim()) errors.push("Falta el número de grupo.");
   const base = groupBase(o);
   if (
@@ -345,6 +359,7 @@ export function publishIssues(a, o) {
   )
     errors.push("Hay conflictos de profesor o aula.");
   for (const session of a.sesiones.filter((s) => s.oferta === o.id)) {
+    errors.push(...sessionIssues(a, session).map(message=>`Sesión ${session.id}: ${message}`));
     errors.push(...roomIssues(a, session));
     if ((a.salones || []).some((r) => r.id === session.aula) && !(Number(o.alumnos) > 0)) errors.push("Captura el número de alumnos del grupo para verificar el aforo.");
   }
@@ -442,16 +457,17 @@ export function validateAcademic(a) {
     if (
       !has(a.ufs, o.uf) ||
       !has(a.semestres, o.semestre) ||
-      !nonempty(o.clave) ||
+      typeof o.clave !== "string" ||
       typeof o.grupo !== "string" ||
       !number(o.udc) ||
       !["Borrador", "Publicada"].includes(o.estado)
     )
       fail("Oferta inválida");
     const key = JSON.stringify([o.semestre, o.clave]);
-    if (keys.has(key)) fail("La clave única ya existe en ese semestre");
-    keys.add(key);
+    if (o.clave && keys.has(key)) fail("La clave única ya existe en ese semestre");
+    if (o.clave) keys.add(key);
     const ps = segments(o).join(",");
+    if (!ps && o.estado === "Borrador") continue;
     if (o.modalidad === "Intensiva") {
       if (
         o.duracion !== 1 ||
@@ -511,29 +527,10 @@ export function validateAcademic(a) {
     cs.add(c.oferta);
   }
   for (const s of a.sesiones) {
-    const o = has(a.ofertas, s.oferta);
-    if (roomIssues(a, s).length) fail(roomIssues(a, s).join(" "));
-    if (
-      !o ||
-      !nonempty(s.aula) ||
-      !/^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$/.test(s.horario) ||
-      s.horario.slice(0, 5) >= s.horario.slice(6) ||
-      !list(s.dias).length ||
-      list(s.dias).some((d) => !DAYS.includes(d)) ||
-      !list(s.segmentos).length ||
-      list(s.segmentos).some((seg) => !segments(o).includes(seg)) ||
-      !list(s.profesores).length ||
-      list(s.profesores).some(
-        (p) =>
-          !a.participaciones.some((x) => x.oferta === o.id && x.profesor === p),
-      )
-    )
-      fail("Sesión inválida: revisa participantes, días, horario y segmentos");
-    if (
-      o.modalidad === "Intensiva" &&
-      list(s.dias).some((d) => ["Sáb", "Dom"].includes(d))
-    )
-      fail("Las intensivas se programan de lunes a viernes");
+    const o=has(a.ofertas,s.oferta);
+    if(!o) fail("Selecciona un grupo existente para guardar la sesión.");
+    if(roomIssues(a,s).length) fail(roomIssues(a,s).join(" "));
+    if(o.estado === "Publicada" && sessionIssues(a,s).length) fail(sessionIssues(a,s).join(" "));
   }
   for (const sem of a.semestres) {
     for (const c of conflicts(a, sem.id)) if (c.aula && (a.salones || []).some((r) => r.id.toLowerCase() === c.aula.trim().toLowerCase())) fail(`Empalme en ${a.salones.find((r)=>r.id.toLowerCase()===c.aula.trim().toLowerCase())?.nombre || c.aula}: grupos ${a.ofertas.find((o)=>o.id===c.oferta1)?.grupo || c.oferta1} y ${a.ofertas.find((o)=>o.id===c.oferta2)?.grupo || c.oferta2}. Cambia el salón, el día, la hora o el periodo de una de las sesiones.`);

@@ -287,6 +287,14 @@ try {
   await page.getByRole("button",{name:"Profesores",exact:true}).click();
   const marianaPanel=page.getByRole("heading",{name:"Mariana Torres",exact:true}).locator("..");
   assert.equal(await marianaPanel.getByRole("checkbox").isDisabled(),true);
+  const actions=marianaPanel.getByRole("group",{name:"Acciones de Mariana Torres"});
+  assert.deepEqual(await actions.getByRole("button").evaluateAll(bs=>bs.map(b=>b.getAttribute("aria-label"))),["Descargar ficha JPEG","Asignar unidad de formación","Editar","Compartir oferta","Eliminar"]);
+  await page.setViewportSize({width:390,height:844});
+  const positions=await actions.getByRole("button").evaluateAll(bs=>bs.map(b=>({y:b.getBoundingClientRect().top,w:b.getBoundingClientRect().width,title:b.title})));
+  assert.equal(new Set(positions.map(b=>b.y)).size,1);
+  assert.ok(positions.every(b=>b.w>=44&&b.title));
+  await page.screenshot({path:"/tmp/arte-screens/professor-icons-mobile.png",fullPage:true});
+
   assert.equal(await page.getByRole("button",{name:"Cuenta administrativa",exact:true}).count(),0);
   await page.getByRole("button",{name:"Historial",exact:true}).click();
   await page.getByLabel("Categoría de historial").selectOption("accesos");

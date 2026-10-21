@@ -44,7 +44,6 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
       const before = structuredClone(a);
       await fn(a);
       protectIdentities(before,a);
-      validateAcademic(a);
       invalidate(a, before);
       validateAcademic(a);
       audit(
@@ -135,7 +134,7 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
     await change(req, (a) => {
       const old = a[collection].find((r) => r.id === clean.id);
       assignmentPermission(a,req.session,collection,clean,old);
-      if (collection === "sesiones" && a.salones.length && (!old || old.aula !== clean.aula) && !a.salones.some((r) => r.id === clean.aula)) throw Error("Selecciona un salón registrado");
+      if (collection === "sesiones" && a.salones.length && clean.aula && (!old || old.aula !== clean.aula) && !a.salones.some((r) => r.id === clean.aula)) throw Error("Selecciona un salón registrado");
       if (
         collection === "participaciones" &&
         old?.oferta !== undefined &&
@@ -303,7 +302,14 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
       const old = a.admins.find((x) => x.id === target);
       const profesor = role !== "consulta" ? String(req.body.profesor ?? old?.profesor ?? "") : "";
       if (profesor && !a.profesores.some((p) => p.id === profesor)) throw Error("Profesor inexistente");
-      if (profesor && a.admins.some((x) => x.id !== target && x.profesor === profesor)) throw Error("El profesor ya está vinculado a otra cuenta");
+      const profile=a.profesores.find(p=>p.id===profesor);
+      if(profile?.protectedAccess && old?.profesor!==profesor)throw Error("Ese perfil de superadministrador ya tiene una identidad protegida y no se puede combinar con otra cuenta.");
+      const duplicate=profesor ? a.admins.find(x=>x.id!==target&&x.profesor===profesor) : null;
+      if(duplicate){
+        if(isAdmin(accountRole(duplicate))||duplicate.protegido)throw Error("Ese profesor está vinculado a otra cuenta administrativa. Revisa cuál es la cuenta correcta antes de combinar.");
+        a.admins=a.admins.filter(x=>x.id!==duplicate.id);
+      }
+      if(profesor && a.profesores.some(p=>p.id!==profesor&&p.correo.toLowerCase()===profile.correo.toLowerCase()))throw Error("Hay profesores con el mismo correo. Corrige el correo antes de combinar las cuentas.");
       if (!old && !hash)
         throw Error("Contraseña obligatoria para una cuenta nueva");
       if (old)
@@ -311,6 +317,7 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
           nombre: nombre.trim(),
           role,
           profesor,
+          emailLogin: !!profesor && (req.body.combinar === true || req.body.combinar === "1" || !!old.emailLogin),
           ...(hash ? { hash } : {}),
         });
       else a.admins.push({ id: target, nombre: nombre.trim(), hash, role, profesor });

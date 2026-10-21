@@ -14,6 +14,7 @@ export function roomUtilization(a,semester,segment) {
   const days=split(r.dias); let used=0;
   for(const day of days){
    const ranges=a.sesiones.filter(s=>s.aula===r.id && ids.has(s.oferta) && split(s.segmentos).includes(segment) && split(s.dias).includes(day))
+    .filter(s=>typeof s.horario==='string' && /^\d{2}:\d{2}-\d{2}:\d{2}$/.test(s.horario) && s.horario.slice(0,5)<s.horario.slice(6))
     .map(s=>[Math.max(start,minutes(s.horario.slice(0,5))),Math.min(end,minutes(s.horario.slice(6)))])
     .filter(([s,e])=>s<e).sort((a,b)=>a[0]-b[0]);
    let last=start;for(const [s,e] of ranges){used+=Math.max(0,e-Math.max(s,last));last=Math.max(last,e);}
