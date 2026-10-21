@@ -1,3 +1,8 @@
+## 4.2.3 (web-deploy)
+
+- El formato de entrega permite datos incompletos y deja celdas vacías, sin omitir ofertas ni docentes pendientes de sesión.
+- Exporta horas parciales por separado y conserva estados, asignaciones y confirmaciones.
+
 ## 4.2.2 (web-deploy)
 
 - El formato de entrega incluye ofertas en borrador y publicadas del semestre seleccionado.
