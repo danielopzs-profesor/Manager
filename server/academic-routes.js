@@ -1,3 +1,4 @@
+import {exportDelivery} from "./delivery-excel.js";
 import {reportPDF} from "./report.js";
 import {isAdmin,accountRole,assignmentPermission,protectIdentities} from "./permissions.js";
 import {historyCategory,historyText} from "./history.js";
@@ -348,6 +349,12 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
       res.json({ ok: true });
     },
   );
+  app.get("/api/academic/delivery.xlsx",auth,admin,async(req,res)=>{
+    const buffer=await exportDelivery(await load(),String(req.query.semestre||""));
+    res.type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition",'attachment; filename="Formato_Entrega.xlsx"');
+    res.send(Buffer.from(buffer));
+  });
   app.get("/api/academic/export", auth, admin, async (req, res) => {
     res.attachment("Programacion_Academica.xlsx");
     res.send(Buffer.from(await exportAcademic(await load())));

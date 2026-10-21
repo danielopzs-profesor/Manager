@@ -11,8 +11,14 @@ const fail = (message) => {
 const has = (xs, id) => xs.find((x) => x.id === id);
 const nonempty = (v) => typeof v === "string" && v.trim().length > 0;
 const number = (v, min = 0) => Number.isFinite(v) && v >= min;
+function deliveryDefaults(a) {
+ for(const u of a.ufs) u.atributos ??= "PMT3";
+ for(const s of a.semestres){s.identificador ??= s.id === "FJ27" ? "202713" : "";s.escuela ??= "AD-Arquitectura, Arte y Diseño";}
+ for(const p of a.profesores)p.nomina ??= /^L\d+$/i.test(p.id) ? p.id : "";
+ return a;
+}
 export function migrateAcademic(db) {
-  if (db.academic) { db.academic.salones ||= []; db.academic.prestamos ||= []; return db.academic; }
+  if (db.academic) { db.academic.salones ||= []; db.academic.prestamos ||= []; return deliveryDefaults(db.academic); }
   const a = {
     version: 2,
     revision: 1,
@@ -83,7 +89,7 @@ export function migrateAcademic(db) {
       "Se conservaron clases previas como borradores. Clasificar docentes, verificar grupos, periodos y fechas antes de publicar.",
   });
   db.academic = a;
-  return a;
+  return deliveryDefaults(a);
 }
 export function list(value) {
   return String(value || "")
@@ -183,13 +189,13 @@ const dateAdd = (start, days) =>
     .toISOString()
     .slice(0, 10);
 export function calendar(semester) {
-  if (!semester?.inicio) return [];
+  if (!semester) return [];
   return SEGMENTS.map((id, i) => {
     const start = [0, 35, 42, 77, 84][i];
     return {
       id,
-      inicio: dateAdd(semester.inicio, start),
-      fin: dateAdd(semester.inicio, start + ([1, 3].includes(i) ? 4 : 34)),
+      inicio: semester[id+"_inicio"] || (semester.inicio ? dateAdd(semester.inicio, start) : ""),
+      fin: semester[id+"_fin"] || (semester.inicio ? dateAdd(semester.inicio, start + ([1, 3].includes(i) ? 4 : 34)) : ""),
     };
   });
 }
@@ -443,6 +449,11 @@ export function validateAcademic(a) {
       fail("Unidad de formación inválida");
   for (const s of a.semestres) {
     if (!nonempty(s.nombre)) fail("Nombre de semestre obligatorio");
+    for(const id of SEGMENTS){
+      for(const suffix of ["inicio","fin"]){const v=s[id+"_"+suffix];if(v && (!/^\d{4}-\d{2}-\d{2}$/.test(v)||!Number.isFinite(Date.parse(v+"T00:00:00Z"))||dateAdd(v,0)!==v))fail(`Fecha inválida en ${id}: selecciona una fecha del calendario.`);}
+      const range=calendar(s).find(r=>r.id===id);if(range.inicio&&range.fin&&range.fin<range.inicio)fail(`En ${id}, la fecha final debe ser igual o posterior a la inicial.`);
+    }
+    const ranges=calendar(s);for(let i=1;i<ranges.length;i++)if(ranges[i-1].fin&&ranges[i].inicio&&ranges[i].inicio<=ranges[i-1].fin)fail(`Las fechas de ${ranges[i].id} se empalman con ${ranges[i-1].id}. Ajusta el calendario del semestre.`);
     if (
       s.inicio &&
       (!/^\d{4}-\d{2}-\d{2}$/.test(s.inicio) ||

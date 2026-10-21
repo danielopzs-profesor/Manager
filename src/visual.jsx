@@ -146,5 +146,5 @@ export function FilledIcon({name,size=24}) {
  return <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true"><path d={paths[name]||paths.add}/></svg>;
 }
 export function IconAction({icon,label,tooltip=label,onClick,disabled=false,danger=false}) {
- return <button type="button" className={'professor-icon-button'+(danger?' professor-icon-button--danger':'')} title={tooltip} aria-label={label} onClick={onClick} disabled={disabled}><FilledIcon name={icon}/></button>;
+ return <button type="button" className={'professor-icon-button'+(icon==='add'?' professor-icon-button--add':'')} title={tooltip} aria-label={label} onClick={onClick} disabled={disabled}><FilledIcon name={icon}/></button>;
 }

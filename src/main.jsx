@@ -628,8 +628,8 @@ function App() {
         {admin && (
           <div className="professor-controls">
             <div className="professor-icon-actions" role="group" aria-label={`Acciones de ${p.nombre}`}>
-              <IconAction icon="download" label="Descargar ficha JPEG" onClick={()=>downloadCard(p.nombre,[p.correo,"Contrato: "+p.tipo,...(p.area?["Área de origen: "+p.area]:[]),"Carga total: "+fmt(w.total)+" UDC","Disponible: "+fmt(w.disponible)+" UDC",...assigned.map(o=>(u(o)?.nombre||o.uf)+" · Grupo "+o.grupo)])}/>
               <IconAction icon="add" label="Asignar unidad de formación" onClick={()=>open("participaciones",{profesor:p.id})}/>
+              <IconAction icon="download" label="Descargar ficha JPEG" onClick={()=>downloadCard(p.nombre,[p.correo,"Contrato: "+p.tipo,...(p.area?["Área de origen: "+p.area]:[]),"Carga total: "+fmt(w.total)+" UDC","Disponible: "+fmt(w.disponible)+" UDC",...assigned.map(o=>(u(o)?.nombre||o.uf)+" · Grupo "+o.grupo)])}/>
               <IconAction icon="edit" label="Editar" onClick={()=>open("profesores",p)}/>
               <IconAction icon="share" label="Compartir oferta" disabled={busy} onClick={()=>notify(p)}/>
               <IconAction icon="delete" label="Eliminar" danger disabled={p.protectedAccess || db.admins.some(a=>a.profesor===p.id && a.role==="superadmin")} tooltip={p.protectedAccess?"Este perfil de superadministrador está protegido":"Eliminar profesor"} onClick={()=>remove("profesores",p)}/>
@@ -1487,6 +1487,7 @@ function App() {
                       <a className="button" href="/api/academic/export">
                         Descargar Excel / plantilla
                       </a>
+                      <button className="secondary" disabled={busy} onClick={()=>run(async()=>{const response=await fetch("/api/academic/delivery.xlsx?semestre="+encodeURIComponent(sem));if(!response.ok){const result=await response.json();throw Error(result.error||"No se pudo generar el formato de entrega.");}const url=URL.createObjectURL(await response.blob()),link=document.createElement("a");link.href=url;link.download="Formato_Entrega.xlsx";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);})}>Descargar formato de entrega</button>
                       <a
                         className="button secondary"
                         href={"/api/academic/report.pdf?semestre="+encodeURIComponent(sem)}
@@ -1966,7 +1967,9 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
         if (!partial && values.horario && values.horario.slice(0,5) >= values.horario.slice(6)) { setFormError("La hora de fin debe ser posterior al inicio. Corrige el horario antes de guardar."); return; }
         const defaults = {};
         if (collection === "profesores") defaults.tipo = "Cátedra";
+        if (collection === "semestres") {defaults.escuela="AD-Arquitectura, Arte y Diseño";defaults.identificador=item.id==="FJ27"?"202713":"";}
         if (collection === "ufs") {
+          defaults.atributos = "PMT3";
           defaults.tipo = "Materia";
           defaults.udc = 0;
         }
@@ -1998,6 +2001,7 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
       {collection === "profesores" && (
         <>
           {field("correo", "Correo institucional", { type: "email" })}
+          {field("nomina", "Nómina para formato de entrega", {required:false,hint:"Independiente del usuario y correo de acceso."})}
           {field("tipo", "Tipo de contrato", {
             options: ["Cátedra", "Planta", "Cátedra interna", "Préstamo", "Por clasificar"],
             defaultValue: "Cátedra",
@@ -2009,6 +2013,7 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
       )}
       {collection === "ufs" && (
         <>
+          {field("atributos", "Atributos de la UF", {defaultValue:"PMT3",required:false,hint:"Puedes editar o agregar atributos separados por coma; ejemplo PMT3,INGL."})}
           {field("tipo", "Tipo de UF", {
             options: ["Materia", "Bloque"],
             defaultValue: "Materia",
@@ -2021,13 +2026,20 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
       )}
       {collection === "salones" && <>
         {field("edificio", "Edificio", { hint: "Ejemplo: CEDES o Aulas 6." })}
+        {field("codigo", "Código de salón para entrega", {required:false,hint:"Código oficial; no modifica el edificio ni el número del salón."})}
         {field("numero", "Número de salón", { hint: "Ejemplo: 319 o 206; también admite letras." })}
         <p>Salón: <b>{values.edificio || "Edificio"}-{values.numero || "Número"}</b>. Su referencia interna se conserva al editar.</p>
         {field("capacidad", "Capacidad de alumnos", { type: "number", hint: "Número entero mayor a cero." })}
         {multi("dias", "Días de trabajo", days)}
         {field("horario", "Horario de trabajo", { hint: "Formato de 24 horas: 07:00-22:00. Un rango por día seleccionado." })}
       </>}
-      {collection === "semestres" && <SemesterDatePicker value={values.inicio || ""} onChange={(v)=>change("inicio",v)}/>}
+      {collection === "semestres" && <>
+        {field("identificador","Identificador del periodo para entrega",{defaultValue:item.id==="FJ27"?"202713":"",required:false,hint:"Ejemplo: 202713. Independiente del identificador interno del semestre."})}
+        {field("escuela","Escuela TEC",{defaultValue:"AD-Arquitectura, Arte y Diseño",required:false})}
+        <SemesterDatePicker value={values.inicio || ""} onChange={(v)=>change("inicio",v)}/>
+        <p>Fechas de los periodos para calendario y formato de entrega. Si dejas un campo vacío se calcula desde el inicio del semestre; las fechas capturadas tienen prioridad.</p>
+        {segments.map((id,i)=>{const date=(suffix)=>{if(values[id+"_"+suffix])return values[id+"_"+suffix];if(!values.inicio)return "";const d=new Date(values.inicio+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+[0,35,42,77,84][i]+(suffix==="fin"?([1,3].includes(i)?4:34):0));return d.toISOString().slice(0,10);};return <fieldset key={id}><legend>{labels[id]}</legend><div className="time-fields">{["inicio","fin"].map(suffix=><label key={suffix}>{suffix==="inicio"?"Fecha inicio":"Fecha fin"} · {id}<input type="date" value={date(suffix)} onChange={e=>change(id+"_"+suffix,e.target.value)}/></label>)}</div></fieldset>})}
+      </>}
       {collection === "prestamos" && <>
         {field("profesor","Profesor",{options:options("profesores")})}
         {field("semestre","Semestre",{options:options("semestres")})}

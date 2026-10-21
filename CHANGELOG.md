@@ -1,3 +1,10 @@
+## 4.2.0 (web-deploy)
+
+- Formato de entrega XLSX con las 29 columnas institucionales, filas por profesor/sesión/periodo y validaciones previas.
+- Nómina independiente del acceso, atributos UF (PMT3 inicial), código oficial de salón e identificador institucional de periodo (202713 inicial para FJ27).
+- Fechas de inicio y fin editables por periodo ordinario o intensivo, compartidas por calendario, contratos y exportación; respaldo Excel conserva nuevos campos y admite plantillas anteriores.
+- Add primero y azul; resto de iconos grises, manteniendo separación y etiquetas accesibles.
+
 ## 4.1.1 (web-deploy)
 
 - El formulario conserva el rol protegido al vincular un superadministrador con un profesor existente; mantiene permisos, asignaciones y acceso a Mi carga académica.

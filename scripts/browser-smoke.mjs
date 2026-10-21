@@ -71,6 +71,8 @@ try {
     await cal.getByLabel("Mes de inicio").selectOption("1");
     assert.equal(await cal.getByRole("button",{name:"Seleccionar 2 de febrero de 2027",exact:true}).isDisabled(),true);
     await cal.getByRole("button",{name:"Seleccionar 1 de febrero de 2027",exact:true}).click();
+    await cal.getByLabel("Identificador del periodo para entrega",{exact:true}).fill("202713");
+    await cal.getByLabel("Fecha fin · P1",{exact:true}).fill("2027-03-05");
     await cal.getByRole("button",{name:"Guardar cambios",exact:true}).click();
     await cal.waitFor({state:"hidden"});
   }
@@ -79,6 +81,7 @@ try {
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Usuario", { exact: true }).fill("L004");
   await dialog.getByLabel("Nombre", { exact: true }).fill("Ana Ejemplo");
+  await dialog.getByLabel("Nómina para formato de entrega",{exact:true}).fill("L004");
   await dialog
     .getByLabel("Correo institucional", { exact: true })
     .fill("ana@example.edu");
@@ -111,6 +114,7 @@ try {
   await page.getByRole("button", { name: "+ Salón", exact: true }).click();
   await dialog.getByLabel("Edificio", {exact:true}).fill("CEDES");
   await dialog.getByLabel("Número de salón", {exact:true}).fill("319");
+  await dialog.getByLabel("Código de salón para entrega",{exact:true}).fill("A-CEDES-319");
   await dialog.getByLabel("Capacidad de alumnos", {exact:true}).fill("30");
   await dialog.getByLabel("Lun", {exact:true}).check();
   await dialog.getByLabel("Horario de trabajo: inicio", {exact:true}).fill("08:00");
@@ -130,6 +134,10 @@ try {
     .getByRole("button", { name: "Publicar oferta", exact: true })
     .click();
   await page.getByText("Oferta publicada. Ya puedes compartirla.").waitFor();
+  await page.getByRole("button",{name:"Datos",exact:true}).click();
+  const [deliveryDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("button",{name:"Descargar formato de entrega",exact:true}).click()]);
+  await deliveryDownload.saveAs("/tmp/arte-screens/Formato_Entrega.xlsx");
+  assert.equal((await readFile("/tmp/arte-screens/Formato_Entrega.xlsx")).subarray(0,2).toString(),"PK");
   await page.getByRole("button", {name:"Salones",exact:true}).click();
   await page.getByRole("heading", {name:"CEDES-319",exact:true}).waitFor();
   await page.getByText("09:00-13:00 · Laboratorio",{exact:true}).waitFor();
@@ -288,7 +296,7 @@ try {
   const marianaPanel=page.getByRole("heading",{name:"Mariana Torres",exact:true}).locator("..");
   assert.equal(await marianaPanel.getByRole("checkbox").isDisabled(),true);
   const actions=marianaPanel.getByRole("group",{name:"Acciones de Mariana Torres"});
-  assert.deepEqual(await actions.getByRole("button").evaluateAll(bs=>bs.map(b=>b.getAttribute("aria-label"))),["Descargar ficha JPEG","Asignar unidad de formación","Editar","Compartir oferta","Eliminar"]);
+  assert.deepEqual(await actions.getByRole("button").evaluateAll(bs=>bs.map(b=>b.getAttribute("aria-label"))),["Asignar unidad de formación","Descargar ficha JPEG","Editar","Compartir oferta","Eliminar"]);
   await page.setViewportSize({width:390,height:844});
   const positions=await actions.getByRole("button").evaluateAll(bs=>bs.map(b=>({y:b.getBoundingClientRect().top,w:b.getBoundingClientRect().width,title:b.title})));
   assert.equal(new Set(positions.map(b=>b.y)).size,1);
