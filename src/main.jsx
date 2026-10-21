@@ -1785,10 +1785,14 @@ function App() {
                         defaultValue={modal.item?.nombre || modal.suggestedNombre}
                       />
                     </label>
-                    <label>
+                    <label htmlFor="account-role">
                       Rol
+                      {modal.item?.role === "superadmin" && <input type="hidden" name="role" value="superadmin"/>}
                       <select
-                        name="role"
+                        id="account-role"
+                        aria-label="Rol"
+                        name={modal.item?.role === "superadmin" ? undefined : "role"}
+                        disabled={modal.item?.role === "superadmin"}
                         defaultValue={modal.item?.role || "consulta"}
                       >
                         <option value="superadmin" disabled>Superadministrador permanente</option>
@@ -1808,6 +1812,7 @@ function App() {
                         {db.profesores.map((p) => <option key={p.id} value={p.id}>{p.nombre} · {p.id}</option>)}
                       </select>
                     </label>
+                    {modal.item?.role === "superadmin" && <p className="muted">La vinculación docente conserva tu rol y todos tus permisos de superadministrador. Solo tú puedes editar esta cuenta.</p>}
                     <p className="muted">Selecciona el profesor que corresponde a esta cuenta. Se reutilizan su perfil y asignaciones, sin crear otro docente. La cuenta administrativa conserva su contraseña; también podrá entrar con el correo del perfil vinculado.</p>
                     <label>
                       Contraseña{" "}

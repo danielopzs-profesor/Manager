@@ -296,6 +296,15 @@ try {
   await page.screenshot({path:"/tmp/arte-screens/professor-icons-mobile.png",fullPage:true});
 
   assert.equal(await page.getByRole("button",{name:"Cuenta administrativa",exact:true}).count(),0);
+
+  await page.getByRole("button",{name:"Usuarios y permisos",exact:true}).click();
+  const superAccount=page.getByText("admin.uno ·",{exact:false}).locator("../..");
+  await superAccount.getByRole("button",{name:"Editar / contraseña",exact:true}).click();
+  assert.equal(await dialog.getByLabel("Rol",{exact:true}).isDisabled(),true);
+  assert.equal(await dialog.locator("form").evaluate(f=>new FormData(f).get("role")),"superadmin");
+  assert.ok(await dialog.getByLabel("Combinar con perfil de profesor (opcional)").isEnabled());
+  await dialog.getByRole("button",{name:"Confirmar",exact:true}).click();
+  await dialog.waitFor({state:"hidden"});
   await page.getByRole("button",{name:"Historial",exact:true}).click();
   await page.getByLabel("Categoría de historial").selectOption("accesos");
   const [historyDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("link",{name:"Descargar TXT",exact:true}).click()]);

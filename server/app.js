@@ -246,7 +246,7 @@ export async function createApp({
     res.json({
       production,
       accessPolicyActive: Boolean((await store.read()).academic?.rolePolicy),
-      version: "4.1.0",
+      version: "4.1.1",
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,

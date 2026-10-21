@@ -17,6 +17,8 @@ Los conflictos comprobados de salón, aforo y disponibilidad siguen mostrando un
 
 Si existe una cuenta adicional sin privilegios administrativos vinculada al mismo profesor, se retira ese acceso duplicado. Si el profesor ya está vinculado a otra cuenta administrativa, la aplicación pide revisar las cuentas antes de combinar. Las identidades de superadministrador están protegidas. Solo un superadministrador puede otorgar o retirar permisos administrativos.
 
+Los superadministradores también pueden vincular su propia cuenta a un profesor existente. El rol se muestra bloqueado y permanece protegido al guardar. Conservan todos sus permisos y pueden consultar sus asignaciones en Mi carga académica. Una cuenta protegida solo puede editarla su titular. No es posible apropiarse del perfil protegido de otro superadministrador.
+
 ## Actualizar la computadora de oficina
 
 En la terminal de Visual Studio Code, dentro de la carpeta del proyecto, detén la aplicación con Ctrl+C. Ejecuta cada línea por separado:

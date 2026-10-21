@@ -248,8 +248,8 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
   });
   app.post("/api/academic/admin", auth, admin, async (req, res) => {
     const { id, nombre, password, remove } = req.body;
-    const role = req.body.role || "admin";
-    if (!["admin", "superadmin", "profesor", "consulta"].includes(role)) throw Error("Rol inválido");
+    let role = req.body.role;
+    if (role && !["admin", "superadmin", "profesor", "consulta"].includes(role)) throw Error("Rol inválido");
     const target = String(id || "")
       .trim()
       .toLowerCase();
@@ -264,6 +264,7 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
     await change(req, (a) => {
       first = a.admins.length === 0;
       const existing = a.admins.find((x) => x.id === target);
+      role ||= accountRole(existing) === "superadmin" ? "superadmin" : "admin";
       if (existing?.protegido || existing?.role === "superadmin") {
         if (remove || role !== "superadmin") throw Error("El rol y los permisos del superadministrador son permanentes.");
         if(req.session.adminId!==target)throw Error("Solo ese superadministrador puede modificar sus propias credenciales.");

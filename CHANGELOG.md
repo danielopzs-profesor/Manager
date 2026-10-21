@@ -1,3 +1,8 @@
+## 4.1.1 (web-deploy)
+
+- El formulario conserva el rol protegido al vincular un superadministrador con un profesor existente; mantiene permisos, asignaciones y acceso a Mi carga académica.
+- Más separación entre iconos, contraseña y casilla administrativa; fila de acciones centrada y con ancho limitado.
+
 ## 4.1.0 (web-deploy)
 
 - Edición de periodos conserva las sesiones como pendientes en borrador; mensajes específicos para corregirlas antes de publicar.
