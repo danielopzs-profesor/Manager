@@ -81,13 +81,18 @@ try {
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Usuario", { exact: true }).fill("L004");
   await dialog.getByLabel("Nombre", { exact: true }).fill("Ana Ejemplo");
-  await dialog.getByLabel("Nómina para formato de entrega",{exact:true}).fill("L004");
   await dialog
     .getByLabel("Correo institucional", { exact: true })
     .fill("ana@example.edu");
   await dialog.getByRole("button", { name: "Guardar cambios" }).click();
   await dialog.waitFor({ state: "hidden" });
   await page.getByRole("heading", { name: "Ana Ejemplo" }).waitFor();
+  await page.getByRole("heading",{name:"Ana Ejemplo",exact:true}).locator("..").getByRole("button",{name:"Editar",exact:true}).click();
+  assert.equal(await dialog.getByLabel("Usuario",{exact:true}).inputValue(),"L004");
+  assert.equal(await dialog.getByLabel("Usuario",{exact:true}).getAttribute("readonly"),"");
+  assert.equal(await dialog.getByLabel("Nómina para formato de entrega",{exact:true}).count(),0);
+  await dialog.getByRole("button",{name:"Cerrar",exact:true}).click();
+
   const [cardDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("heading",{name:"Ana Ejemplo",exact:true}).locator("..").getByRole("button",{name:"Descargar ficha JPEG",exact:true}).click()]);
   await cardDownload.saveAs("/tmp/arte-screens/ficha-profesor.jpg");
   const jpeg=await readFile("/tmp/arte-screens/ficha-profesor.jpg");assert.equal(jpeg[0],255);assert.equal(jpeg[1],216);

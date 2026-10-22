@@ -22,7 +22,8 @@ function deliveryDefaults(a) {
  }
  for(const u of a.ufs) u.atributos ??= "PMT3";
  for(const s of a.semestres){s.identificador ??= s.id === "FJ27" ? "202711" : "";s.escuela ??= "AD-Arquitectura, Arte y Diseño";}
- for(const p of a.profesores)p.nomina ??= /^L\d+$/i.test(p.id) ? p.id : "";
+ for(const p of a.profesores)if(!p.nomina)p.nomina=p.id;
+ a.facultyUsernameVersion=1;
  return a;
 }
 export function migrateAcademic(db) {

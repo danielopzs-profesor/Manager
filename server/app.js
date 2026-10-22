@@ -49,7 +49,7 @@ export async function createApp({
       path.resolve(env.EXCEL_PATH || "data/Programación Arte FJ27.xlsx"),
     );
   await store.init();
-  if ((await store.read()).academic?.deliveryManualVersion !== 1)
+  if ((await store.read()).academic?.deliveryManualVersion !== 1 || (await store.read()).academic?.facultyUsernameVersion !== 1)
     await store.mutate((db) => {
       migrateAcademic(db);
     });
@@ -170,8 +170,8 @@ export async function createApp({
       const db = await store.read();
       const accounts = db.academic?.admins || [];
       let nomina, professorVersion, facultyRole;
-      const linkedAccounts=accounts.filter(a=>a.emailLogin && db.academic?.profesores.some(p=>p.id===a.profesor&&String(p.correo).trim().toLowerCase()===username));
-      if(!accounts.some(a=>a.id===username)&&linkedAccounts.length>1)return res.status(401).json({error:"El correo está asociado a varias cuentas. Solicita al administrador que revise la vinculación."});
+      const linkedAccounts=accounts.filter(a=>db.academic?.profesores.some(p=>p.id===a.profesor&&(String(p.nomina||p.id).trim().toLowerCase()===username || (a.emailLogin && String(p.correo).trim().toLowerCase()===username))));
+      if(!accounts.some(a=>a.id===username)&&linkedAccounts.length>1)return res.status(401).json({error:"El usuario está asociado a varias cuentas. Solicita al administrador que revise la vinculación."});
       const adminAccount = accounts.find((a) => a.id === username) || linkedAccounts[0];
       const bootstrap = !accounts.length && !username;
       if (adminAccount) {
@@ -182,20 +182,20 @@ export async function createApp({
           return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
       } else {
         const people = db.academic
-          ? db.academic.profesores.map((p) => ({ ...p, nomina: p.id }))
+          ? db.academic.profesores.map((p) => ({ ...p, internalId:p.id, nomina:p.nomina||p.id }))
           : db.Profesores;
         const email = String(identifier || "").trim().toLowerCase();
         const matches = people.filter(
-          (p) => String(p.correo || "").trim().toLowerCase() === email,
+          (p) => !!email && (String(p.nomina||"").trim().toLowerCase() === email || String(p.correo || "").trim().toLowerCase() === email),
         );
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || matches.length !== 1)
-          return res.status(401).json({ error: "Correo institucional o contraseña incorrectos" });
+        if (matches.length !== 1)
+          return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
         const p = matches[0];
         if (p.passwordHash) {
           if (!(await passwordMatches(password, p.passwordHash)))
             return res
               .status(401)
-              .json({ error: "Correo institucional o contraseña incorrectos" });
+              .json({ error: "Usuario o contraseña incorrectos" });
         } else if (production)
           return res.status(401).json({
             error:
@@ -203,7 +203,7 @@ export async function createApp({
           });
         facultyRole = p.accessRole || "profesor";
         professorVersion = p.passwordHash;
-        nomina = p.nomina;
+        nomina = p.internalId || p.nomina;
       }
       await new Promise((resolve, reject) =>
         req.session.regenerate((e) => (e ? reject(e) : resolve())),
@@ -246,7 +246,7 @@ export async function createApp({
     res.json({
       production,
       accessPolicyActive: Boolean((await store.read()).academic?.rolePolicy),
-      version: "4.2.3",
+      version: "4.3.0",
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,

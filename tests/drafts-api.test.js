@@ -13,6 +13,7 @@ test('API: editar periodos publicados, guardar parcial y combinar una cuenta con
  await store.mutate(db=>{const account=db.academic.admins.find(x=>x.id==='admin.uno');account.role='superadmin';account.protegido=true;});
  const superLogin=await req('/login',{identifier:'admin.uno',password:'admin-password-123'},null);assert.equal(superLogin.status,200);cookie=superLogin.headers.get('set-cookie').split(';')[0];
  assert.equal((await change('/academic/admin',{id:'admin.uno',nombre:'Admin Uno',profesor:'L002',combinar:true})).status,200);
+ const byPayroll=await req('/login',{identifier:'l002',password:'admin-password-123'},null);assert.equal(byPayroll.status,200);assert.equal((await byPayroll.json()).role,'superadmin');
  const me=await (await req('/me')).json();assert.equal(me.role,'superadmin');assert.equal(me.nomina,'L002');
  a=await data();assert.equal(a.admins.find(x=>x.id==='admin.uno').role,'superadmin');assert.equal(a.admins.find(x=>x.id==='admin.uno').protegido,true);assert.equal(a.participaciones.length,before.participaciones.length);
  assert.equal((await change('/academic/admin',{id:'admin.uno',nombre:'Admin Uno',role:'profesor',profesor:'L002'})).status,400);

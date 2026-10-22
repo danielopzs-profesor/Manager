@@ -566,7 +566,7 @@ function App() {
         </div>
         <h3>{p.nombre}</h3>
         <p>
-          {p.id} · {p.correo}
+          {p.nomina || p.id} · {p.correo}
         </p>
         <div className="load">
           <strong>{fmt(w.total)}</strong>
@@ -1134,7 +1134,7 @@ function App() {
                       {db.profesores
                         .filter(
                           (p) =>
-                            (p.nombre + " " + p.id)
+                            (p.nombre + " " + (p.nomina||p.id))
                               .toLowerCase()
                               .includes(query.toLowerCase()) &&
                             (!type || p.tipo === type) &&
@@ -1748,7 +1748,7 @@ function App() {
                 {modal.kind === "professorPassword" && (
                   <>
                     <p>
-                      Usuario: <b>{find("profesores", modal.profesor)?.correo}</b>. Comparte la contraseña personalmente; no
+                      Usuario (nómina): <b>{find("profesores", modal.profesor)?.nomina || modal.profesor}</b>. Comparte la contraseña personalmente; no
                       aparecerá en exportaciones ni en el historial.
                     </p>
                     <label>
@@ -1988,7 +1988,8 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
     >
       {partial && <p className="alert">Puedes guardar datos parciales como borrador. Completa y revisa las sesiones antes de publicar; no se borrarán al cambiar los periodos del grupo.</p>}
       {formError && <p className="alert error" role="alert">{formError}</p>}
-      {["profesores", "ufs", "semestres"].includes(collection) &&
+      {collection === "profesores" && field(item.id?"nomina":"id","Usuario",{readOnly:!!item.id,defaultValue:item.nomina||item.id||"",hint:"El usuario es la nómina del profesor y también se utiliza en el Excel. No se puede editar después de crear el perfil."})}
+      {["ufs", "semestres"].includes(collection) &&
         field(
           "id",
           collection === "profesores"
@@ -2003,7 +2004,6 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
       {collection === "profesores" && (
         <>
           {field("correo", "Correo institucional", { type: "email" })}
-          {field("nomina", "Nómina para formato de entrega", {required:false,hint:"Independiente del usuario y correo de acceso."})}
           {field("tipo", "Tipo de contrato", {
             options: ["Cátedra", "Planta", "Cátedra interna", "Préstamo", "Por clasificar"],
             defaultValue: "Cátedra",

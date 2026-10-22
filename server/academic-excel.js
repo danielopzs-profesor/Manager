@@ -87,6 +87,10 @@ export async function importAcademic(buffer, current) {
       }
       if (name === "profesores") {
         const old = current.profesores.find((p) => p.id === item.id);
+        const username=old?.nomina||old?.id||item.id;
+        if(old && item.nomina && item.nomina!==username)throw Error("No se puede modificar el usuario (nómina) de un profesor existente al importar Excel.");
+        if(!old && item.nomina && item.nomina!==item.id)throw Error("El usuario debe ser la nómina para los nuevos profesores del Excel.");
+        item.nomina=username;
         if (old?.passwordHash) item.passwordHash = old.passwordHash;
         if (old?.accessRole) item.accessRole=old.accessRole;
         if (old?.protectedAccess) item.protectedAccess=true;

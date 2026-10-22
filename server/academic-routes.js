@@ -135,6 +135,13 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
     await change(req, (a) => {
       const old = a[collection].find((r) => r.id === clean.id);
       assignmentPermission(a,req.session,collection,clean,old);
+      if(collection === "profesores") {
+        const username=old?.nomina||old?.id||clean.id;
+        if(old && clean.nomina && clean.nomina!==username)throw Error("El usuario (nómina) no se puede modificar; se utiliza en el Excel.");
+        if(!old && clean.nomina && clean.nomina!==clean.id)throw Error("El usuario debe ser la nómina del profesor.");
+        clean.nomina=username;
+        if(a.profesores.some(p=>p.id!==clean.id && String(p.nomina||p.id).trim().toLowerCase()===String(username).trim().toLowerCase()))throw Error("Ya existe un profesor con esa nómina.");
+      }
       if (collection === "sesiones" && a.salones.length && clean.aula && (!old || old.aula !== clean.aula) && !a.salones.some((r) => r.id === clean.aula)) throw Error("Selecciona un salón registrado");
       if (
         collection === "participaciones" &&
@@ -344,7 +351,10 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
         const p = a.profesores.find((p) => p.id === req.body.profesor);
         if (!p) throw Error("Profesor no encontrado");
         if (p.protectedAccess && req.session.nomina !== p.id && (p.passwordHash || req.session.role !== "superadmin")) {const e=Error("Solo ese superadministrador puede cambiar su contraseña docente");e.status=403;throw e;}
+        const linked=a.admins.find(account=>account.profesor===p.id);
+        if(linked && (linked.protegido || linked.role === "superadmin") && req.session.adminId!==linked.id){const e=Error("Solo ese superadministrador puede cambiar su contraseña");e.status=403;throw e;}
         p.passwordHash = hash;
+        if(linked)linked.hash=hash;
       });
       res.json({ ok: true });
     },
@@ -369,13 +379,13 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
     req.body.detail = String(req.body.id);
     await change(req, (a) => {
       const credentials = new Map(
-        a.profesores.map((p) => [p.id, {hash:p.passwordHash,accessRole:p.accessRole,protectedAccess:p.protectedAccess}]),
+        a.profesores.map((p) => [p.id, {hash:p.passwordHash,accessRole:p.accessRole,protectedAccess:p.protectedAccess,nomina:p.nomina||p.id}]),
       );
       for (const key of Object.keys(sheets))
         a[key] = structuredClone(previous[key]);
       a.profesores.forEach((p) => {
         delete p.passwordHash;
-        if (credentials.get(p.id)) {const saved=credentials.get(p.id);p.passwordHash=saved.hash;p.accessRole=saved.accessRole;p.protectedAccess=saved.protectedAccess;}
+        if (credentials.get(p.id)) {const saved=credentials.get(p.id);p.passwordHash=saved.hash;p.accessRole=saved.accessRole;p.protectedAccess=saved.protectedAccess;p.nomina=saved.nomina;}
       });
       a.sobrecargas = [];
       a.ofertas.forEach((o) => (o.estado = "Borrador"));

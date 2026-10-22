@@ -1,3 +1,9 @@
+## 4.3.0 (web-deploy)
+
+- Usuario docente unificado con nómina: un solo campo bloqueado al editar y usado en el acceso y Excel.
+- Compatibilidad con perfiles anteriores sin renombrar referencias ni perder asignaciones; importación y restauración conservan el usuario existente.
+- Las cuentas vinculadas admiten acceso por nómina con su rol y contraseña administrativa; restablecimiento sincronizado y protección del superadministrador.
+
 ## 4.2.3 (web-deploy)
 
 - El formato de entrega permite datos incompletos y deja celdas vacías, sin omitir ofertas ni docentes pendientes de sesión.
