@@ -1,3 +1,5 @@
+> **Rama desktop-app:** versión de escritorio para Mac Intel con actualizador de GitHub Releases. Consulta [la guía de instalación, compilación y actualizaciones](docs/DESKTOP-APP.md). El instalador requiere compilarse en macOS; la actualización automática requiere firma de Apple.
+
 # Coordinación Académica
 
 PWA para oferta semestral de unidades de formación, grupos, responsabilidad docente, coordinación y horarios. React + Node.js + PostgreSQL en Netlify/Neon; también funciona localmente con persistencia Excel. Identidad visual azul y cian, superficies translúcidas y tipografías Manrope/Sora locales, adaptadas del archivo de referencia `ui`.

@@ -1,3 +1,10 @@
+## 4.5.0 (desktop-app)
+
+- Rama independiente con aplicación Electron para Mac Intel y servidor local privado, manteniendo autenticación de producción.
+- Asistente de conexión Neon con configuración cifrada mediante el Llavero del sistema.
+- Actualización desde GitHub Releases con descarga e instalación consentidas; requiere firma en macOS.
+- Empaquetado DMG/ZIP y workflow de compilación macOS que prepara Releases en borrador.
+
 ## 4.4.0 (web-deploy)
 
 - Activación explícita de contraseñas temporales docentes de prueba, con cambio obligatorio en el primer acceso.

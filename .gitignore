@@ -4,3 +4,8 @@ data/*
 !data/.gitkeep
 .env
 *.log
+
+release/
+*.enc
+*.dmg
+*.p12

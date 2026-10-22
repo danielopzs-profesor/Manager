@@ -22,17 +22,19 @@ import { passwordHash, passwordMatches } from "./accounts.js";
 import { originPolicy } from "./origins.js";
 export async function createApp({
   serverless = false,
+  desktop = false,
   env = process.env,
 } = {}) {
-  const production = env.NODE_ENV === "production" || serverless;
-  const policy = originPolicy(env, { serverless, production });
+  const production = env.NODE_ENV === "production" || serverless || desktop;
+  const policy = originPolicy(env, { serverless, production: production && !desktop });
   const publicUrl = policy.publicUrl;
+  if(desktop && !/^http:\/\/127\.0\.0\.1:\d+$/.test(publicUrl||""))throw Error("El servidor de escritorio debe usar una dirección local privada.");
   if (
     production &&
     (!env.ADMIN_PASSWORD ||
       !env.SESSION_SECRET ||
       env.SESSION_SECRET.length < 32 ||
-      !publicUrl?.startsWith("https://"))
+      (!desktop && !publicUrl?.startsWith("https://")))
   ) {
     throw Error(
       "Configura ADMIN_PASSWORD, SESSION_SECRET (32 caracteres mínimo) y una URL HTTPS",
@@ -48,16 +50,26 @@ export async function createApp({
     new Store(
       path.resolve(env.EXCEL_PATH || "data/Programación Arte FJ27.xlsx"),
     );
+  try {
   await store.init();
   if ((await store.read()).academic?.deliveryManualVersion !== 1 || (await store.read()).academic?.facultyUsernameVersion !== 1)
     await store.mutate((db) => {
       migrateAcademic(db);
     });
   await applyRolePolicy(store,env);
+  } catch(error) {
+    await runtime?.sessions.close();
+    await runtime?.pool.end();
+    throw error;
+  }
   const pendingHistory = new Set();
   const logEvent = event => {const job=recordEvent(store,event);pendingHistory.add(job);job.finally(()=>pendingHistory.delete(job));return job;};
   const app = express();
   if (serverless || env.TRUST_PROXY === "1") app.set("trust proxy", 1);
+  if(desktop){
+    if(!env.DESKTOP_TOKEN || env.DESKTOP_TOKEN.length<32)throw Error("Configura el token privado de escritorio.");
+    app.use("/api",(req,res,next)=>{const supplied=String(req.get("X-Arte-Desktop")||"");const expected=String(env.DESKTOP_TOKEN);if(Buffer.byteLength(supplied)!==Buffer.byteLength(expected)||!timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)))return res.status(403).json({error:"Acceso exclusivo de la aplicación de escritorio"});next();});
+  }
   app.use(helmet({ contentSecurityPolicy: production ? undefined : false }));
   app.use(express.json({ limit: "100kb" }));
   app.use(
@@ -69,7 +81,7 @@ export async function createApp({
       cookie: {
         httpOnly: true,
         sameSite: "strict",
-        secure: production,
+        secure: production && !desktop,
         maxAge: 8 * 3600000,
       },
     }),
@@ -274,7 +286,7 @@ export async function createApp({
     res.json({
       production,
       accessPolicyActive: Boolean((await store.read()).academic?.rolePolicy),
-      version: "4.4.0",
+      version: "4.5.0",
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,

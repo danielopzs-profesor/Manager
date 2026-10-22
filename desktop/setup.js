@@ -1,0 +1,2 @@
+const form = document.querySelector('#setup'),status = document.querySelector('#status'),button=document.querySelector('#save');
+form.addEventListener('submit',async event=>{event.preventDefault();button.disabled=true;status.textContent='Conectando con la base de datos…';try{const result=await window.desktopSetup.save(document.querySelector('#database').value);if(!result.ok)status.textContent=result.error;else document.querySelector('#database').value='';}catch{status.textContent='No se pudo completar la configuración. Intenta de nuevo.';}finally{button.disabled=false;}});
