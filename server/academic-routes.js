@@ -65,7 +65,7 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
       const p=a.profesores.find(p=>p.id===req.body.profesor);if(!p)throw Error("Profesor inexistente");
       let account=a.admins.find(x=>x.profesor===p.id||x.id===p.correo.toLowerCase());
       if(p.protectedAccess||p.accessRole==="superadmin"||account?.protegido||account?.role==="superadmin")throw Error("El superadministrador conserva permanentemente su rol");
-      if(!account){if(!p.passwordHash)throw Error("Configura primero el acceso del profesor; después podrás otorgar el rol sin crear otra contraseña");account={id:p.correo.toLowerCase(),nombre:p.nombre,profesor:p.id,hash:p.passwordHash};a.admins.push(account);}
+      if(!account){if(!p.passwordHash)throw Error("Configura primero el acceso del profesor; después podrás otorgar el rol sin crear otra contraseña");account={id:p.correo.toLowerCase(),nombre:p.nombre,profesor:p.id,hash:p.passwordHash,mustChangePassword:!!p.mustChangePassword};a.admins.push(account);}
       if(account.profesor&&account.profesor!==p.id)throw Error("La cuenta está vinculada a otro profesor");account.profesor=p.id;account.role=req.body.enabled?"admin":"profesor";p.accessRole="profesor";req.body.action="Cambiar rol";req.body.detail=p.id;
     });res.json({ok:true});
   });
@@ -339,6 +339,23 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
     }
     res.json({ ok: true });
   });
+  app.post("/api/academic/temporary-passwords",auth,admin,async(req,res)=>{
+    if(req.body.confirmacion!=="ACTIVAR PRUEBA")throw Error("Confirma la activación de contraseñas de prueba.");
+    req.body.action="Activar contraseñas temporales de prueba";
+    let updated=0,skipped=0;
+    await change(req,async a=>{
+      for(const p of a.profesores){
+        const account=a.admins.find(x=>x.profesor===p.id);
+        if(p.protectedAccess||isAdmin(p.accessRole)||isAdmin(accountRole(account))||account?.protegido){skipped++;continue;}
+        const hash=await passwordHash("temporal123",{temporary:true});
+        p.passwordHash=hash;p.mustChangePassword=true;
+        if(account){account.hash=hash;account.mustChangePassword=true;}
+        updated++;
+      }
+      req.body.detail=`${updated} accesos docentes actualizados; ${skipped} perfiles administrativos protegidos sin cambios.`;
+    });
+    res.json({ok:true,updated,skipped});
+  });
   app.post(
     "/api/academic/professor-password",
     auth,
@@ -353,8 +370,8 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
         if (p.protectedAccess && req.session.nomina !== p.id && (p.passwordHash || req.session.role !== "superadmin")) {const e=Error("Solo ese superadministrador puede cambiar su contraseña docente");e.status=403;throw e;}
         const linked=a.admins.find(account=>account.profesor===p.id);
         if(linked && (linked.protegido || linked.role === "superadmin") && req.session.adminId!==linked.id){const e=Error("Solo ese superadministrador puede cambiar su contraseña");e.status=403;throw e;}
-        p.passwordHash = hash;
-        if(linked)linked.hash=hash;
+        p.passwordHash = hash;p.mustChangePassword=false;
+        if(linked){linked.hash=hash;linked.mustChangePassword=false;}
       });
       res.json({ ok: true });
     },
@@ -379,13 +396,13 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
     req.body.detail = String(req.body.id);
     await change(req, (a) => {
       const credentials = new Map(
-        a.profesores.map((p) => [p.id, {hash:p.passwordHash,accessRole:p.accessRole,protectedAccess:p.protectedAccess,nomina:p.nomina||p.id}]),
+        a.profesores.map((p) => [p.id, {hash:p.passwordHash,accessRole:p.accessRole,protectedAccess:p.protectedAccess,nomina:p.nomina||p.id,mustChangePassword:!!p.mustChangePassword}]),
       );
       for (const key of Object.keys(sheets))
         a[key] = structuredClone(previous[key]);
       a.profesores.forEach((p) => {
         delete p.passwordHash;
-        if (credentials.get(p.id)) {const saved=credentials.get(p.id);p.passwordHash=saved.hash;p.accessRole=saved.accessRole;p.protectedAccess=saved.protectedAccess;p.nomina=saved.nomina;}
+        if (credentials.get(p.id)) {const saved=credentials.get(p.id);p.passwordHash=saved.hash;p.accessRole=saved.accessRole;p.protectedAccess=saved.protectedAccess;p.nomina=saved.nomina;p.mustChangePassword=saved.mustChangePassword;}
       });
       a.sobrecargas = [];
       a.ofertas.forEach((o) => (o.estado = "Borrador"));

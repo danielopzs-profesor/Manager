@@ -1,3 +1,9 @@
+## 4.4.0 (web-deploy)
+
+- Activación explícita de contraseñas temporales docentes de prueba, con cambio obligatorio en el primer acceso.
+- Formulario emergente con confirmación y bloqueo de API hasta elegir contraseña personal; las contraseñas nuevas requieren 12–200 caracteres.
+- Exclusión de cuentas administrativas y protegidas; importaciones y restauraciones conservan el estado de cambio obligatorio.
+
 ## 4.3.0 (web-deploy)
 
 - Usuario docente unificado con nómina: un solo campo bloqueado al editar y usado en el acceso y Excel.

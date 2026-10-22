@@ -92,6 +92,7 @@ export async function importAcademic(buffer, current) {
         if(!old && item.nomina && item.nomina!==item.id)throw Error("El usuario debe ser la nómina para los nuevos profesores del Excel.");
         item.nomina=username;
         if (old?.passwordHash) item.passwordHash = old.passwordHash;
+        item.mustChangePassword=!!old?.mustChangePassword;
         if (old?.accessRole) item.accessRole=old.accessRole;
         if (old?.protectedAccess) item.protectedAccess=true;
       }

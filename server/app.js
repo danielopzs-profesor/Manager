@@ -18,7 +18,7 @@ import {
   publicAcademic,
   publishIssues,
 } from "./academic.js";
-import { passwordMatches } from "./accounts.js";
+import { passwordHash, passwordMatches } from "./accounts.js";
 import { originPolicy } from "./origins.js";
 export async function createApp({
   serverless = false,
@@ -91,6 +91,13 @@ export async function createApp({
       });
     next();
   });
+  const passwordGate=(req,res,entity)=>{
+    req.session.mustChangePassword=!!entity?.mustChangePassword;
+    if(req.session.mustChangePassword && !["/api/me","/api/password"].includes(req.path)){
+      res.status(403).json({error:"Elige tu contraseña personal para continuar.",mustChangePassword:true});return false;
+    }
+    return true;
+  };
   const auth = (req, res, next) => {
     if (!req.session.role)
       return res.status(401).json({ error: "Inicia sesión" });
@@ -111,7 +118,7 @@ export async function createApp({
             return res.status(401).json({
               error: "Tu contraseña cambió. Cierra sesión y vuelve a ingresar.",
             });
-          next();
+          if(passwordGate(req,res,p))next();
         })
         .catch(next);
     next();
@@ -137,7 +144,7 @@ export async function createApp({
         return res.status(401).json({ error: "Cuenta no disponible" });
       const account = accounts.find((a) => a.id === req.session.adminId);
       req.session.nomina = account?.role !== "consulta" ? account?.profesor || undefined : undefined;
-      next();
+      if(passwordGate(req,res,account))next();
     } catch (e) {
       next(e);
     }
@@ -169,12 +176,13 @@ export async function createApp({
       const username = String(identifier).trim().toLowerCase();
       const db = await store.read();
       const accounts = db.academic?.admins || [];
-      let nomina, professorVersion, facultyRole;
+      let nomina, professorVersion, facultyRole, mustChangePassword=false;
       const linkedAccounts=accounts.filter(a=>db.academic?.profesores.some(p=>p.id===a.profesor&&(String(p.nomina||p.id).trim().toLowerCase()===username || (a.emailLogin && String(p.correo).trim().toLowerCase()===username))));
       if(!accounts.some(a=>a.id===username)&&linkedAccounts.length>1)return res.status(401).json({error:"El usuario está asociado a varias cuentas. Solicita al administrador que revise la vinculación."});
       const adminAccount = accounts.find((a) => a.id === username) || linkedAccounts[0];
       const bootstrap = !accounts.length && !username;
       if (adminAccount) {
+        mustChangePassword=!!adminAccount.mustChangePassword;
         if (!(await passwordMatches(password, adminAccount.hash)))
           return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
       } else if (bootstrap) {
@@ -201,6 +209,7 @@ export async function createApp({
             error:
               "Solicita al administrador que configure tu contraseña de acceso.",
           });
+        mustChangePassword=!!p.mustChangePassword;
         facultyRole = p.accessRole || "profesor";
         professorVersion = p.passwordHash;
         nomina = p.internalId || p.nomina;
@@ -215,6 +224,7 @@ export async function createApp({
           : facultyRole || "profesor";
       req.session.nomina = nomina;
       req.session.professorVersion = professorVersion;
+      req.session.mustChangePassword=mustChangePassword;
       if (adminAccount) {
         req.session.nomina = (accountRole(adminAccount)) !== "consulta" ? adminAccount.profesor || undefined : undefined;
         req.session.adminId = adminAccount.id;
@@ -223,11 +233,28 @@ export async function createApp({
       await logEvent({categoria:"accesos",actor:req.session.adminId || nomina || "Configuración inicial",accion:"Inicio de sesión",detalle:`Rol ${req.session.role}`});
       res.json({
         role: req.session.role,
+        mustChangePassword:req.session.mustChangePassword,
         nomina: req.session.nomina,
         adminId: req.session.adminId,
       });
     },
   );
+  app.post("/api/password",auth,async(req,res)=>{
+    if(!req.session.mustChangePassword)return res.status(400).json({error:"Tu cuenta no requiere cambio de contraseña inicial."});
+    if(req.body.password !== req.body.confirmation)throw Error("Las contraseñas no coinciden. Escríbelas iguales en ambos campos.");
+    const hash=await passwordHash(req.body.password);
+    await store.mutate(async db=>{
+      const a=db.academic,account=a.admins.find(x=>x.id===req.session.adminId),p=a.profesores.find(x=>x.id===req.session.nomina),identity=account||p;
+      const oldHash=account?.hash||p?.passwordHash;
+      if(!identity?.mustChangePassword||oldHash!==(account?req.session.adminVersion:req.session.professorVersion))throw Error("Tu acceso cambió. Cierra sesión y vuelve a ingresar.");
+      if(await passwordMatches(req.body.password,oldHash))throw Error("Elige una contraseña diferente de la temporal.");
+      if(account){account.hash=hash;account.mustChangePassword=false;req.session.adminVersion=hash;}
+      if(p){p.passwordHash=hash;p.mustChangePassword=false;req.session.professorVersion=hash;}
+    });
+    req.session.mustChangePassword=false;
+    await logEvent({categoria:"seguridad",actor:req.session.adminId||req.session.nomina,accion:"Elegir contraseña personal",detalle:"Se completó el cambio obligatorio de contraseña inicial."});
+    res.json({ok:true});
+  });
   app.post("/api/logout", async (req, res) => {
     await logEvent({categoria:"accesos",actor:req.session.adminId || req.session.nomina,accion:"Cierre de sesión"});
     return req.session.destroy(() => {
@@ -238,6 +265,7 @@ export async function createApp({
   app.get("/api/me", (req, res, next) => req.session.role ? auth(req, res, next) : next(), (req, res) =>
     res.json({
       role: req.session.role || null,
+      mustChangePassword:!!req.session.mustChangePassword,
       nomina: req.session.nomina,
       adminId: req.session.adminId,
     }),
@@ -246,7 +274,7 @@ export async function createApp({
     res.json({
       production,
       accessPolicyActive: Boolean((await store.read()).academic?.rolePolicy),
-      version: "4.3.0",
+      version: "4.4.0",
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,

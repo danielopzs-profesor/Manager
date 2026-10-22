@@ -1,10 +1,10 @@
 import { scrypt as rawScrypt, randomBytes, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 const scrypt = promisify(rawScrypt);
-export async function passwordHash(password) {
+export async function passwordHash(password, {temporary = false} = {}) {
   if (
     typeof password !== "string" ||
-    password.length < 12 ||
+    password.length < (temporary ? 11 : 12) ||
     password.length > 200
   )
     throw Error("La contraseña debe tener de 12 a 200 caracteres");

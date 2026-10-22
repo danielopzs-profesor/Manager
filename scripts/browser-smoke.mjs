@@ -332,6 +332,22 @@ try {
   const [pdfDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("link",{name:"Descargar reporte PDF",exact:true}).click()]);
   await pdfDownload.saveAs("/tmp/arte-screens/reporte.pdf");
   assert.equal((await readFile("/tmp/arte-screens/reporte.pdf")).subarray(0,8).toString(),"%PDF-1.4");
+
+  await page.getByRole("button",{name:"Usuarios y permisos",exact:true}).click();
+  await page.getByRole("button",{name:"Activar contraseñas temporales de prueba",exact:true}).click();
+  await dialog.getByLabel("Escribe ACTIVAR PRUEBA",{exact:true}).fill("ACTIVAR PRUEBA");
+  await dialog.getByRole("button",{name:"Confirmar",exact:true}).click();
+  await dialog.waitFor({state:"hidden"});
+  await page.getByRole("button",{name:"Cerrar sesión",exact:true}).click();
+  await page.getByLabel("Usuario",{exact:true}).fill("L004");
+  await page.getByLabel("Contraseña",{exact:true}).fill("temporal123");
+  await page.getByRole("button",{name:"Ingresar →",exact:true}).click();
+  await page.getByRole("heading",{name:"Elige tu contraseña personal",exact:true}).waitFor();
+  await dialog.getByLabel("Nueva contraseña",{exact:true}).fill("browser-own-password-123");
+  await dialog.getByLabel("Confirmar contraseña",{exact:true}).fill("browser-own-password-123");
+  await dialog.getByRole("button",{name:"Guardar mi contraseña",exact:true}).click();
+  await dialog.waitFor({state:"hidden"});
+  assert.equal(await page.evaluate(async()=>{const r=await fetch('/api/me');return (await r.json()).mustChangePassword;}),false);
   assert.deepEqual(failures, []);
   console.log(
     "Navegador: creación de profesor y administrador, publicación, respaldos y aceptación docente correctos. Desktop y móvil sin errores JS ni desbordamiento.",

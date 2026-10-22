@@ -148,13 +148,13 @@ function App() {
     };
   }, []);
   useEffect(() => {
-    if (me?.role) run(() => refresh());
-  }, [me?.role, sem]);
+    if (me?.role && !me.mustChangePassword) run(() => refresh());
+  }, [me?.role, me?.mustChangePassword, sem]);
   useEffect(() => {
-    if (!me?.role || modal) return;
+    if (!me?.role || me.mustChangePassword || modal) return;
     const id = setInterval(() => refresh().catch(() => {}), 30000);
     return () => clearInterval(id);
-  }, [me?.role, sem, modal]);
+  }, [me?.role, me?.mustChangePassword, sem, modal]);
   useEffect(() => {
     if (!modal) return;
     const key = (e) => {
@@ -853,6 +853,18 @@ function App() {
             </form>
           </div>
         </main>
+      ) : me.mustChangePassword ? (
+        <div className="overlay"><section className="modal" role="dialog" aria-modal="true" aria-labelledby="initial-password-title" onKeyDown={e=>{if(e.key!=="Tab")return;const nodes=[...e.currentTarget.querySelectorAll("input,button:not(:disabled)")],first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}}>
+          <h2 id="initial-password-title">Elige tu contraseña personal</h2>
+          <p>Estás usando una contraseña temporal. Debes cambiarla antes de consultar tus clases.</p>
+          <form onSubmit={e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.currentTarget));run(async()=>{await api("/password",values);setMe(await api("/me"));setNotice("Tu contraseña personal quedó guardada.");});}}>
+            <label>Nueva contraseña<input name="password" type="password" minLength={12} maxLength={200} required autoComplete="new-password" autoFocus/></label>
+            <label>Confirmar contraseña<input name="confirmation" type="password" minLength={12} maxLength={200} required autoComplete="new-password"/></label>
+            <p className="muted">Usa de 12 a 200 caracteres y una contraseña diferente de la temporal.</p>
+            {error && <p className="alert error" role="alert">{error}</p>}
+            <button disabled={busy||!online}>{busy?"Guardando…":"Guardar mi contraseña"}</button>
+          </form>
+        </section></div>
       ) : (
         <div className="app-shell">
           <nav className="sidebar" aria-label="Navegación principal">
@@ -1402,6 +1414,8 @@ function App() {
                         + Usuario
                       </button>
                     </div>
+                    <button className="secondary" onClick={()=>setModal({kind:"temporaryPasswords",revision:db.revision})}>Activar contraseñas temporales de prueba</button>
+                    <p className="muted">Permite que los profesores elijan su contraseña al ingresar. Las cuentas administrativas y de superadministrador conservan su acceso.</p>
                     {db.admins.map((a) => (
                       <div className="record" key={a.id}>
                         <div>
@@ -1580,6 +1594,7 @@ function App() {
                       admin: "Cuenta de acceso",
                       adminDelete: "Eliminar administrador",
                       import: "Reemplazar programación",
+                      temporaryPasswords:"Contraseñas temporales de prueba",
                       clearHistory: "Borrar historial",
                       restore: "Restaurar respaldo",
                     }[modal.kind]}
@@ -1636,6 +1651,7 @@ function App() {
                   e.preventDefault();
                   const values = Object.fromEntries(new FormData(e.target));
                   run(async () => {
+                    if (modal.kind === "temporaryPasswords") await act("/academic/temporary-passwords",{confirmacion:values.confirmacion},modal.revision);
                     if (modal.kind === "clearHistory") await act("/academic/history/clear",{categoria:modal.categoria,confirmacion:values.confirmacion},modal.revision);
                     if (modal.kind === "approve")
                       await act(
@@ -1699,6 +1715,7 @@ function App() {
                   });
                 }}
               >
+                {modal.kind === "temporaryPasswords" && <><p>Se reemplazarán las contraseñas de los profesores por <b>temporal123</b> y se cerrarán sus sesiones anteriores. Deberán elegir una contraseña personal antes de consultar datos. Los perfiles administrativos y superadministradores se excluyen.</p><label>Escribe ACTIVAR PRUEBA<input name="confirmacion" required autoComplete="off"/></label></>}
                 {modal.kind === "clearHistory" && <label>Descarga antes el TXT. Escribe BORRAR HISTORIAL para eliminar {modal.categoria||"todas las categorías"}.<input name="confirmacion" required autoComplete="off"/></label>}
                 {modal.kind === "approve" && (
                   <label>
