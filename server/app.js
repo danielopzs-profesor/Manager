@@ -1,3 +1,4 @@
+import {registerLocalUpdates,updatesEnabled} from "./local-updates.js";
 import {isAdmin,accountRole,applyRolePolicy} from "./permissions.js";
 import {recordEvent,redact} from "./history.js";
 import express from "express";
@@ -274,12 +275,14 @@ export async function createApp({
     res.json({
       production,
       accessPolicyActive: Boolean((await store.read()).academic?.rolePolicy),
-      version: "4.4.1",
+      version: "4.6.0",
+      localUpdatesEnabled:updatesEnabled(env,production),
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,
     }),
   );
+  registerLocalUpdates(app,{auth,admin,env,production,logEvent});
   academicRoutes(app, { store, auth, admin, env });
   app.use(
     ["/api/respond", "/api/classes", "/api/professors", "/api/import"],

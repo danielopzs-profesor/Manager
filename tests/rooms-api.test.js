@@ -6,7 +6,7 @@ import path from 'node:path';
 import {Store} from '../server/store.js';
 import {fixture} from './fixtures.js';
 import {createApp} from '../server/app.js';
-test('API de salones: guarda, bloquea empalmes/aforo y no elimina salones ocupados',async()=>{
+test('API de salones: guarda, advierte empalmes y bloquea aforo y no elimina salones ocupados',async()=>{
  const dir=await mkdtemp(path.join(os.tmpdir(),'arte-rooms-'));const file=path.join(dir,'book.xlsx');
  const store=new Store(file);await store.init();await store.mutate(()=>fixture());
  const runtime=await createApp({env:{EXCEL_PATH:file,ADMIN_PASSWORD:'initial-password',PUBLIC_URL:'http://localhost'}});
@@ -27,8 +27,8 @@ test('API de salones: guarda, bloquea empalmes/aforo y no elimina salones ocupad
   a=await data();const session={...a.sesiones[0],aula:'R1'};
   assert.equal((await change('/academic/save',{collection:'sesiones',item:session})).status,200);
   const revision=(await data()).revision;
-  assert.equal((await change('/academic/save',{collection:'sesiones',item:{...session,id:'S2',horario:'12:00-14:00'}})).status,400);
-  assert.equal((await data()).revision,revision);
+  assert.equal((await change('/academic/save',{collection:'sesiones',item:{...session,id:'S2',horario:'12:00-14:00'}})).status,200);
+  assert.equal((await data()).revision,revision+1);assert.ok((await data()).avisos.some(v=>v.errores.includes('Hay conflictos de profesor o aula.')));
   assert.equal((await change('/academic/save',{collection:'ofertas',item:{...a.ofertas[0],alumnos:31}})).status,400);
   assert.equal((await change('/academic/save',{collection:'sesiones',item:{...session,horario:'07:00-10:00'}})).status,400);
   assert.equal((await change('/academic/save',{collection:'sesiones',item:{...session,aula:'unknown'}})).status,400);

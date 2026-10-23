@@ -326,6 +326,15 @@ try {
   await page.getByRole("button",{name:"Coordinación",exact:true}).click();
   await page.getByRole("button",{name:"Ver asignación →",exact:true}).first().click();
   assert.equal(await page.getByRole("button",{name:"Publicar oferta",exact:true}).count(),0);
+  await page.getByRole("button",{name:"+ Sesión",exact:true}).click();
+  await dialog.getByLabel("Lun",{exact:true}).check();
+  await dialog.getByLabel("Horario: inicio",{exact:true}).fill("14:00");
+  await dialog.getByLabel("Horario: fin",{exact:true}).fill("15:00");
+  await dialog.getByLabel("Mariana Torres",{exact:true}).check();
+  await dialog.getByLabel("P1",{exact:true}).check();
+  await dialog.getByRole("button",{name:"Guardar cambios",exact:true}).click();
+  await dialog.waitFor({state:"hidden"});
+  await page.getByText("Lun · 14:00-15:00",{exact:true}).waitFor();
   await page.getByRole("button",{name:"Asignar profesor",exact:true}).click();
   assert.equal(await dialog.getByLabel("Oferta / grupo",{exact:true}).locator("option").count(),2);
   await dialog.getByRole("button",{name:"Cerrar",exact:true}).click();
@@ -365,6 +374,17 @@ try {
   await pdfDownload.saveAs("/tmp/arte-screens/reporte.pdf");
   assert.equal((await readFile("/tmp/arte-screens/reporte.pdf")).subarray(0,8).toString(),"%PDF-1.4");
 
+  let simulatedUpdate={phase:"idle",message:""},updateRequests=0;
+  await page.route("**/api/config",async route=>{const response=await route.fetch();await route.fulfill({response,json:{...await response.json(),localUpdatesEnabled:true}});});
+  await page.route("**/api/local-update",async route=>{if(route.request().method()==="POST"){updateRequests++;simulatedUpdate={id:"browser-test-update",phase:"complete",message:"Comprobación de actualización terminada."};}await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(simulatedUpdate)});});
+  await page.reload();
+  await page.getByRole("button",{name:"Actualizar aplicación",exact:true}).waitFor();
+  page.once("dialog",dialog=>dialog.accept());
+  await page.getByRole("button",{name:"Actualizar aplicación",exact:true}).click();
+  await page.getByText("Comprobación de actualización terminada.",{exact:true}).waitFor();
+  assert.equal(updateRequests,1);
+  assert.equal(await page.evaluate(async()=>{const response=await fetch('/api/me');return (await response.json()).role;}),"superadmin");
+  await page.unroute("**/api/local-update");await page.unroute("**/api/config");await page.reload();
   await page.getByRole("button",{name:"Usuarios y permisos",exact:true}).click();
   await page.getByRole("button",{name:"Activar contraseñas temporales de prueba",exact:true}).click();
   await dialog.getByLabel("Escribe ACTIVAR PRUEBA",{exact:true}).fill("ACTIVAR PRUEBA");

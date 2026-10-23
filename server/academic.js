@@ -317,7 +317,7 @@ export function roomIssues(a, session) {
   if (Number(o?.alumnos || 0) > room.capacidad) issues.push(`El grupo tiene ${o?.alumnos} alumnos y ${room.nombre} tiene capacidad para ${room.capacidad}. Selecciona un salón más grande o corrige el número de alumnos.`);
   return issues;
 }
-export function publishIssues(a, o) {
+export function publicationBlockers(a, o) {
   const errors = [];
   const parts = a.participaciones.filter((p) => p.oferta === o.id);
   if (Math.abs(parts.reduce((n, p) => n + p.porcentaje, 0) - 100) > 0.00001)
@@ -353,6 +353,11 @@ export function publishIssues(a, o) {
     else if (l.estado === "Sobrecarga pendiente")
       errors.push(`Falta aprobación de sobrecarga para ${p}.`);
   }
+  return errors;
+}
+export function publishIssues(a,o){
+  const parts=a.participaciones.filter(p=>p.oferta===o.id);
+  const errors=publicationBlockers(a,o);
   if (!a.sesiones.some((s) => s.oferta === o.id))
     errors.push("Falta programar las sesiones.");
   for (const seg of segments(o)) {
@@ -551,10 +556,10 @@ export function validateAcademic(a) {
     const o=has(a.ofertas,s.oferta);
     if(!o) fail("Selecciona un grupo existente para guardar la sesión.");
     if(roomIssues(a,s).length) fail(roomIssues(a,s).join(" "));
-    if(o.estado === "Publicada" && sessionIssues(a,s).length) fail(sessionIssues(a,s).join(" "));
+    if(o.estado === "Publicada" && !o.programacionFlexible && sessionIssues(a,s).length) fail(sessionIssues(a,s).join(" "));
   }
   for (const sem of a.semestres) {
-    for (const c of conflicts(a, sem.id)) if (c.aula && (a.salones || []).some((r) => r.id.toLowerCase() === c.aula.trim().toLowerCase())) fail(`Empalme en ${a.salones.find((r)=>r.id.toLowerCase()===c.aula.trim().toLowerCase())?.nombre || c.aula}: grupos ${a.ofertas.find((o)=>o.id===c.oferta1)?.grupo || c.oferta1} y ${a.ofertas.find((o)=>o.id===c.oferta2)?.grupo || c.oferta2}. Cambia el salón, el día, la hora o el periodo de una de las sesiones.`);
+    for (const c of conflicts(a, sem.id)) if (!a.ofertas.some(o=>[c.oferta1,c.oferta2].includes(o.id)&&o.programacionFlexible) && c.aula && (a.salones || []).some((r) => r.id.toLowerCase() === c.aula.trim().toLowerCase())) fail(`Empalme en ${a.salones.find((r)=>r.id.toLowerCase()===c.aula.trim().toLowerCase())?.nombre || c.aula}: grupos ${a.ofertas.find((o)=>o.id===c.oferta1)?.grupo || c.oferta1} y ${a.ofertas.find((o)=>o.id===c.oferta2)?.grupo || c.oferta2}. Cambia el salón, el día, la hora o el periodo de una de las sesiones.`);
   }
   return a;
 }
@@ -623,7 +628,7 @@ export function invalidate(a, before) {
     const prev = before.ofertas.find((x) => x.id === o.id);
     const relevant = (x) =>
       JSON.stringify({
-        o: (({ estado, ...rest }) => rest)(
+        o: (({ estado, programacionFlexible, ...rest }) => rest)(
           x.ofertas.find((z) => z.id === o.id) || {},
         ),
         parts: x.participaciones
@@ -634,7 +639,8 @@ export function invalidate(a, before) {
         sem: x.semestres.find((s) => s.id === o.semestre),
       });
     if (prev && relevant(a) !== relevant(before)) {
-      o.estado = "Borrador";
+      const stable=x=>{const value=JSON.parse(relevant(x));delete value.sesiones;return JSON.stringify(value);};
+      o.estado = prev.estado==="Publicada" && o.programacionFlexible && stable(a)===stable(before)?"Publicada":"Borrador";
       for (const p of a.participaciones.filter((p) => p.oferta === o.id)) {
         p.estatus = "Pendiente";
         p.comentarios = "";
@@ -642,7 +648,7 @@ export function invalidate(a, before) {
     }
   }
   for (const o of a.ofertas)
-    if (o.estado === "Publicada" && publishIssues(a, o).length)
+    if (o.estado === "Publicada" && (o.programacionFlexible?publicationBlockers(a,o):publishIssues(a,o)).length)
       o.estado = "Borrador";
 }
 export function publicAcademic(a, session) {

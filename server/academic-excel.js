@@ -80,7 +80,7 @@ export async function importAcademic(buffer, current) {
           ? Number(cell.text)
           : cell.text;
       });
-      if (name === "ofertas") item.estado = "Borrador";
+      if (name === "ofertas") {item.estado = "Borrador";item.programacionFlexible=true;}
       if (name === "participaciones") {
         item.estatus = "Pendiente";
         item.comentarios = "";

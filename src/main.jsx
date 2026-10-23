@@ -111,7 +111,8 @@ function App() {
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
     [online, setOnline] = useState(navigator.onLine),
-    [backups, setBackups] = useState([]);
+    [backups, setBackups] = useState([]),
+    [localUpdate,setLocalUpdate]=useState(null);
   const run = async (fn) => {
     setBusy(true);
     setError("");
@@ -148,6 +149,12 @@ function App() {
       window.removeEventListener("offline", cb);
     };
   }, []);
+  useEffect(()=>{
+    if(!config.localUpdatesEnabled||!["admin","superadmin"].includes(me?.role)||me.mustChangePassword)return;
+    let active=true,running=false,timer;
+    const poll=async()=>{if(running||!active)return;running=true;let delay=30000;try{const state=await api("/local-update");if(!active)return;setLocalUpdate(state);if(!["idle","complete","failed"].includes(state.phase))delay=3000;if(state.phase==="ready")await api("/local-update/restart",{});if(state.phase==="complete"&&state.version&&sessionStorage.getItem("arte-last-update")!==state.id){sessionStorage.setItem("arte-last-update",state.id);if(config.version!==state.version)window.location.reload();}}catch{delay=5000;}finally{running=false;if(active)timer=setTimeout(poll,delay);}};
+    poll();return()=>{active=false;clearTimeout(timer);};
+  },[config.localUpdatesEnabled,config.version,me?.role,me?.mustChangePassword,localUpdate?.id]);
   useEffect(() => {
     if (me?.role && !me.mustChangePassword) run(() => refresh());
   }, [me?.role, me?.mustChangePassword, sem]);
@@ -252,6 +259,7 @@ function App() {
         "Profesores",
         "Unidades de formación",
         "Ofertas",
+        ...(coordinatedIds.length ? ["Coordinación"] : []),
         "Salones",
         "Préstamos",
         "Solicitudes",
@@ -392,7 +400,7 @@ function App() {
             {hasPending && <p className="alert">Hay ediciones pendientes de este grupo. Usa «Revisar cambios» antes de publicarlo.</p>}
             {issues.length > 0 && (
               <div className="requirements">
-                <b>Para publicar</b>
+                <b>Revisiones y advertencias de programación</b>
                 <ul>
                   {issues.map((s) => (
                     <li key={s}>{s}</li>
@@ -507,9 +515,11 @@ function App() {
             )}
           </>
         )}
+        {canManageOffer(o)&&<p className="muted">Microprogramación: selecciona docentes de la asignación, días, horas y salón por sesión. Los empalmes se muestran como advertencia; un ajuste de horario conserva la publicación y reinicia las confirmaciones para que los docentes lo revisen.</p>}
+        {tab==="Coordinación"&&issues.length>0&&<div className="requirements"><b>Advertencias de programación</b><ul>{issues.map((message,i)=><li key={i}>{message}</li>)}</ul></div>}
         <div className="section-heading">
           <h3>Sesiones y horarios</h3>
-          {admin && (
+          {canManageOffer(o) && (
             <button
               className="secondary"
               onClick={() => open("sesiones", { oferta: o.id })}
@@ -535,7 +545,7 @@ function App() {
                     .join(" / ")}
                 </small>
               </div>
-              {admin && (
+              {canManageOffer(o) && (
                 <div className="buttons">
                   <button
                     className="secondary"
@@ -775,6 +785,7 @@ function App() {
             <i /> Portal académico
           </span>
         )}
+        {config.localUpdatesEnabled && ["admin","superadmin"].includes(me?.role)&&!me.mustChangePassword&&<button title={"Versión actual: "+config.version} className="header-button" disabled={busy||!!localUpdate&&!["idle","complete","failed"].includes(localUpdate.phase)} onClick={()=>{if(window.confirm("Guarda tus formularios antes de actualizar esta computadora desde web-deploy. Se conservarán .env, la conexión y tu sesión de Neon. ¿Continuar?"))run(async()=>setLocalUpdate(await api("/local-update",{})));}}>Actualizar aplicación</button>}
         {me?.role && (
           <button
             className="header-button"
@@ -791,6 +802,7 @@ function App() {
           </button>
         )}
       </header>
+      {localUpdate&&localUpdate.phase!=="idle"&&<p className={localUpdate.phase==="failed"?"alert error":"alert"} role="status">{localUpdate.message}{localUpdate.phase==="restarting"?" Espera unos segundos; se reconectará automáticamente.":""}</p>}
       {!online && (
         <div className="offline">
           Sin conexión. Para consultar o guardar cambios necesitas internet.
@@ -2161,17 +2173,15 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
           {multi(
             "profesores",
             "Profesores de esta sesión",
-            participants.map((p) => ({
+            [...participants.map((p) => ({
               value: p.profesor,
-              label:
-                db.profesores.find((x) => x.id === p.profesor)?.nombre ||
-                p.profesor,
-            })),
+              label: db.profesores.find((x) => x.id === p.profesor)?.nombre || p.profesor,
+            })),...split(values.profesores).filter(id=>!participants.some(p=>p.profesor===id)).map(id=>({value:id,label:(db.profesores.find(p=>p.id===id)?.nombre||id)+" (sin responsabilidad asignada; desmarca para corregir)"}))],
           )}
           {multi(
             "segmentos",
             "Segmentos de impartición",
-            split(selected?.periodos),
+            [...new Set([...split(selected?.periodos),...split(values.segmentos)])].map(id=>({value:id,label:split(selected?.periodos).includes(id)?id:id+" (fuera de la oferta; desmarca para corregir)"})),
           )}
           {multi(
             "dias",

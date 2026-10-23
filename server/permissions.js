@@ -41,7 +41,7 @@ export async function applyRolePolicy(store,env) {
 export function canAssign(a,session,offerId){return isAdmin(session.role)||!!session.nomina&&a.coordinaciones.some(c=>c.oferta===offerId&&c.profesor===session.nomina);}
 export function assignmentPermission(a,session,collection,item,old){
  if(isAdmin(session.role))return;
- if(collection!=='participaciones'||!canAssign(a,session,item?.oferta||old?.oferta)||(old&&!canAssign(a,session,old.oferta))){const e=Error('Solo puedes asignar profesores en los grupos que coordinas.');e.status=403;throw e;}
+ if(!['participaciones','sesiones'].includes(collection)||!canAssign(a,session,item?.oferta||old?.oferta)||(old&&!canAssign(a,session,old.oferta))){const e=Error('Solo puedes asignar profesores y programar sesiones en los grupos que coordinas.');e.status=403;throw e;}
 }
 
 export function protectIdentities(before,after){

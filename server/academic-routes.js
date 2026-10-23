@@ -8,6 +8,7 @@ import { randomUUID } from "node:crypto";
 import multer from "multer";
 import {
   migrateAcademic,
+  list,
   validateAcademic,
   publicAcademic,
   workload,
@@ -16,6 +17,7 @@ import {
   distribution,
   conflicts,
   publishIssues,
+  publicationBlockers,
   loadFingerprint,
   audit,
   invalidate,
@@ -46,7 +48,7 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
       if(stale && !supportsPending){const e=Error("La programación cambió. Recarga antes de guardar para no sobrescribir cambios de otro administrador.");e.status=409;throw e;}
       if(stale && !canRebase(a,req,edit.collection,edit.item)){preserve();return;}
       const before = structuredClone(a);
-      await fn(a);
+      try{await fn(a);}catch(error){if(!stale||!supportsPending||error.status===403)throw error;Object.assign(a,before);preserve();return;}
       protectIdentities(before,a);
       invalidate(a, before);
       try{validateAcademic(a);}catch(error){
@@ -102,18 +104,18 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
         contrato: contract(a, p.id, semestre),
         distribucion: distribution(a, p.id, semestre),
       })),
-      conflictos: isAdmin(req.session.role) ? conflicts(all, semestre) : [],
+      conflictos: conflicts(all,semestre).filter(c=>isAdmin(req.session.role)||all.coordinaciones.some(x=>x.profesor===req.session.nomina&&[c.oferta1,c.oferta2].includes(x.oferta))).map(c=>isAdmin(req.session.role)?c:{...c,oferta1:a.ofertas.some(o=>o.id===c.oferta1)?c.oferta1:"Otro grupo",oferta2:a.ofertas.some(o=>o.id===c.oferta2)?c.oferta2:"Otro grupo"}),
       avisos:
-        isAdmin(req.session.role)
+        (isAdmin(req.session.role)||all.coordinaciones.some(c=>c.profesor===req.session.nomina))
           ? all.ofertas
-              .filter((o) => o.semestre === semestre)
-              .map((o) => ({ oferta: o.id, errores: publishIssues(all, o) }))
+              .filter((o) => o.semestre === semestre && (isAdmin(req.session.role)||all.coordinaciones.some(c=>c.profesor===req.session.nomina&&c.oferta===o.id)))
+              .map((o) => ({ oferta: o.id, errores: publishIssues(all, o).filter(e=>isAdmin(req.session.role)||!e.startsWith("Falta aprobación")&&!e.startsWith("Clasifica al profesor")&&!e.startsWith("Define el tope")), bloqueos:isAdmin(req.session.role)?publicationBlockers(all,o):[] }))
           : [],
     });
   });
   const allocationAccess = (req,res,next) => {
     if (isAdmin(req.session.role)) return next();
-    if(req.session.nomina && req.body.collection === "participaciones") return next();
+    if(req.session.nomina && ["participaciones","sesiones"].includes(req.body.collection)) return next();
     res.status(403).json({error:"Solo administración o coordinación del grupo pueden modificar asignaciones"});
   };
   app.post("/api/academic/save", auth, allocationAccess, async (req, res) => {
@@ -161,6 +163,8 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
         clean.estatus = old.estatus;
         clean.comentarios = old.comentarios;
       }
+      if(collection === "sesiones" && list(clean.profesores).some(id=>!a.participaciones.some(p=>p.oferta===clean.oferta&&p.profesor===id)))throw Error("Selecciona docentes con responsabilidad asignada en este grupo.");
+      if(collection === "sesiones"){const offer=a.ofertas.find(o=>o.id===clean.oferta);if(offer)offer.programacionFlexible=true;}
       if (old) Object.assign(old, clean);
       else a[collection].push(clean);
       if(req.body.pendingId && isAdmin(req.session.role))a.pendingEdits=(a.pendingEdits||[]).filter(p=>!(p.id===req.body.pendingId&&p.collection===collection&&p.item.id===clean.id));
@@ -178,6 +182,7 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
     await change(req, (a) => {
       const record=a[collection].find(r=>r.id===id);
       assignmentPermission(a,req.session,collection,record,record);
+      if(collection==="sesiones"){const offer=a.ofertas.find(o=>o.id===record?.oferta);if(offer)offer.programacionFlexible=true;}
       if (collection === "ofertas") {
         if (!a.ofertas.some((o) => o.id === id))
           throw Error("Oferta inexistente");
@@ -196,8 +201,9 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
       const o = a.ofertas.find((o) => o.id === req.body.id);
       if (!o) throw Error("Oferta inexistente");
       if((a.pendingEdits||[]).some(p=>pendingOffer(p)===o.id))throw Error("Hay ediciones pendientes de revisión para este grupo. Revísalas o descártalas antes de publicar.");
-      const issues = publishIssues(a, o);
+      const issues = publicationBlockers(a, o);
       if (issues.length) throw Error(issues.join(" "));
+      o.programacionFlexible=true;
       o.estado = "Publicada";
     });
     res.json({ ok: true });

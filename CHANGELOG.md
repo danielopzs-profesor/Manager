@@ -1,3 +1,10 @@
+## 4.6.0 (web-deploy)
+
+- Publicación con programación pendiente y advertencias de empalmes, separada de los requisitos académicos de publicación.
+- Coordinadores pueden gestionar sesiones de sus propios grupos; los ajustes horarios conservan la publicación y reinician confirmaciones.
+- Botón de actualización local desde web-deploy, revisión de cambios locales, proceso independiente y reinicio de supervisores.
+- Clave local de sesión persistente para conservar sesiones de Neon entre actualizaciones; actualizador deshabilitado en producción.
+
 ## 4.4.1 (web-deploy)
 
 - ATLI/Escuela de Arte/Escuela Arte filtran y generan códigos A-EA-número; agrega códigos 107, 110 y 114 y evita duplicados entre alias.
