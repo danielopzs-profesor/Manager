@@ -1,3 +1,4 @@
+import {isArtBuilding,artRoomCode,roomCodeOptions} from "../shared/art-rooms.js";
 import roomCodes from "../shared/room-codes.json";
 import {downloadCard} from "./downloads.js";
 import { SemesterDatePicker, TimeRangePicker, explainError } from "./date-time.jsx";
@@ -213,11 +214,12 @@ function App() {
   const sessions =
     db?.sesiones.filter((s) => offers.some((o) => o.id === s.oferta) && (!personal || split(s.profesores).includes(myProfessor))) || [];
   const open = (collection, item = {}) =>
-    setModal({ kind: "edit", collection, item, revision: db.revision });
+    setModal({ kind: "edit", collection, item, baseItem:item.id ? structuredClone(db[collection].find(x=>x.id===item.id)||null):null, revision: db.revision });
   const act = async (url, data, revision = db.revision) => {
-    await api(url, { ...data, revision });
+    const result=await api(url, { ...data, revision });
     await refresh();
-    setNotice("Cambios guardados.");
+    setNotice(result.pending?"Tu trabajo se guardó como edición pendiente porque otra persona modificó el registro. Revísalo en Ofertas → Ediciones pendientes antes de publicar.":"Cambios guardados.");
+    return result;
   };
   const remove = (collection, item) =>
     setModal({ kind: "delete", collection, item, revision: db.revision });
@@ -282,6 +284,12 @@ function App() {
   const freeHours = occupancy.reduce((n,r)=>n+r.freeHours,0);
   const availableHours = occupancy.reduce((n,r)=>n+r.totalHours,0);
   const loanRows = db?.prestamos?.filter((p)=>p.semestre===sem) || [];
+  function pendingComparison(p){
+    const current=db[p.collection].find(x=>x.id===p.item.id)||{};
+    const labels={clave:"Clave de oferta",grupo:"Grupo",semestre:"Semestre",uf:"Unidad de formación",modalidad:"Modalidad",duracion:"Duración (semanas)",periodos:"Periodos",udc:"UDC",estado:"Estado",alumnos:"Alumnos",oferta:"Oferta / grupo",profesor:"Profesor",porcentaje:"Responsabilidad (%)",estatus:"Confirmación",comentarios:"Comentarios",profesores:"Docentes de la sesión",dias:"Días",horario:"Horario",aula:"Salón",segmentos:"Periodos de la sesión"};
+    const value=(key,v)=>{if(v===undefined||v===null||v==="")return "Sin dato";if(key==="profesor")return find("profesores",v)?.nombre||v;if(key==="uf")return find("ufs",v)?.nombre||v;if(key==="aula")return find("salones",v)?.nombre||v;if(key==="profesores")return split(v).map(id=>find("profesores",id)?.nombre||id).join(", ");return String(v);};
+    return <div className="table-wrap"><table><thead><tr><th>Campo</th><th>Versión actual</th><th>Edición pendiente</th></tr></thead><tbody>{Object.keys(p.item).filter(k=>k!=="id"&&String(current[k]??"")!==String(p.item[k]??"")).map(k=><tr key={k}><th>{labels[k]||k}</th><td>{value(k,current[k])}</td><td>{value(k,p.item[k])}</td></tr>)}</tbody></table></div>;
+  }
   function offerCard(o) {
     const ps = db.participaciones.filter((p) => p.oferta === o.id);
     const total = ps.reduce((n, p) => n + p.porcentaje, 0);
@@ -304,6 +312,7 @@ function App() {
           <span>{o.periodos}</span>
           <span>{fmt(o.udc)} UDC base</span>
         </div>
+        {admin && u(o)?.tipo==="Bloque" && <p className="muted">Coordinación: {(()=>{const c=db.coordinaciones.find(c=>c.oferta===o.id);return c?`${find("profesores",c.profesor)?.nombre||c.profesor} · ${fmt(c.udc)} UDC adicionales`:"Pendiente de asignar";})()}</p>}
         {admin && (
           <>
             <div className="progress">
@@ -327,6 +336,7 @@ function App() {
               <button className="secondary" onClick={() => open("participaciones", { oferta: o.id })}>
                 Asignar profesor
               </button>
+              {admin && u(o)?.tipo==="Bloque" && <button className="secondary" onClick={()=>open("coordinaciones",db.coordinaciones.find(c=>c.oferta===o.id)||{oferta:o.id})}>{db.coordinaciones.some(c=>c.oferta===o.id)?"Editar coordinador":"Asignar coordinador"}</button>}
               {admin && <button className="plain" onClick={() => open("ofertas", o)}>Editar</button>}
               {admin && <button className="secondary" onClick={()=>downloadCard(u(o)?.nombre||"Asignación",["Grupo "+o.grupo+" · Clave "+o.clave,o.periodos+" · "+o.duracion+" semanas · "+o.udc+" UDC",...ps.map(p=>(find("profesores",p.profesor)?.nombre||p.profesor)+" · "+p.porcentaje+" %")])}>Descargar ficha JPEG</button>}
             </>
@@ -339,6 +349,7 @@ function App() {
     const ps = db.participaciones.filter((p) => p.oferta === o.id && (readAll || tab === "Coordinación" || p.profesor === myProfessor));
     const coord = db.coordinaciones.find((c) => c.oferta === o.id);
     const issues = db.avisos.find((x) => x.oferta === o.id)?.errores || [];
+    const hasPending=(db.pendingEdits||[]).some(p=>(p.collection==="ofertas"?p.item.id:p.item.oferta)===o.id);
     return (
       <section className="panel">
         <div className="section-heading">
@@ -366,17 +377,19 @@ function App() {
                     setNotice("Oferta publicada. Ya puedes compartirla.");
                   })
                 }
-                disabled={busy || o.estado === "Publicada"}
+                disabled={busy || o.estado === "Publicada" || hasPending}
               >
                 Publicar oferta
               </button>
               <button className="secondary" onClick={() => open("ofertas", o)}>
                 Editar grupo
               </button>
+              {u(o)?.tipo==="Bloque" && <button className="secondary" onClick={()=>open("coordinaciones",coord||{oferta:o.id})}>{coord?"Editar coordinador":"Asignar coordinador"}</button>}
               <button className="danger" onClick={() => remove("ofertas", o)}>
                 Eliminar grupo y asignaciones
               </button>
             </div>
+            {hasPending && <p className="alert">Hay ediciones pendientes de este grupo. Usa «Revisar cambios» antes de publicarlo.</p>}
             {issues.length > 0 && (
               <div className="requirements">
                 <b>Para publicar</b>
@@ -1215,6 +1228,7 @@ function App() {
                     </div>
                   </>
                 )}
+                {admin && tab==="Ofertas" && !!db.pendingEdits?.length && <section className="panel"><h2>Ediciones pendientes</h2><p>Estos cambios están guardados temporalmente. Compáralos con la versión actual y revísalos antes de aplicar y publicar; no se sobrescribe el trabajo de otra persona.</p>{db.pendingEdits.map(p=><div className="record" key={p.id}><div><b>{names[p.collection]} · {p.item.grupo||p.item.oferta||p.item.id}</b><p>Guardado por {p.actor} · {new Date(p.fecha).toLocaleString("es-MX")}</p><details><summary>Comparar versiones</summary>{pendingComparison(p)}</details></div><div className="buttons"><button onClick={()=>setModal({kind:"edit",collection:p.collection,item:p.item,pendingId:p.id,baseItem:structuredClone(db[p.collection].find(x=>x.id===p.item.id)||null),revision:db.revision})}>Revisar cambios</button><button className="plain" onClick={()=>{if(window.confirm("¿Descartar esta edición pendiente? La versión actual se conserva."))run(()=>act("/academic/pending/discard",{id:p.id}));}}>Descartar pendiente</button></div></div>)}</section>}
                 {["Ofertas", "Mis respuestas", "Coordinación"].includes(tab) && (
                   <>
                     {detail && find("ofertas", detail) ? (
@@ -1624,7 +1638,7 @@ function App() {
                   run(async () => {
                     await act(
                       "/academic/save",
-                      { collection: modal.collection, item },
+                      { collection: modal.collection, item, baseItem:modal.baseItem??null, pendingId:modal.pendingId },
                       modal.revision,
                     );
                     setModal(null);
@@ -1891,7 +1905,7 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
   const [values, setValues] = useState({ ...item });
   const [formError,setFormError] = useState("");
   const partial = ["ofertas","sesiones"].includes(collection);
-  const change = (key, v) => setValues((x) => ({ ...x, [key]: v, ...(collection === "ofertas" && ["duracion","modalidad"].includes(key) ? {periodos:"",...(key === "modalidad" ? {duracion:v === "Intensiva" ? 1 : 5} : {})} : {}) }));
+  const change = (key, v) => setValues((x) => ({ ...x, [key]: v, ...(collection==="salones"&&["edificio","numero"].includes(key)&&isArtBuilding(key==="edificio"?v:x.edificio)?{codigo:artRoomCode(key==="numero"?v:x.numero)}:{}), ...(collection === "ofertas" && ["duracion","modalidad"].includes(key) ? {periodos:"",...(key === "modalidad" ? {duracion:v === "Intensiva" ? 1 : 5} : {})} : {}) }));
   const field = (
     key,
     label,
@@ -1951,7 +1965,7 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
   const remaining = Math.max(0, 100 - participants
     .filter((p) => p.id !== item.id)
     .reduce((sum, p) => sum + Number(p.porcentaje), 0));
-  const assignmentOffers = db.ofertas.filter((o) => (o.semestre === semestre || o.id === values.oferta) && (!allowedOfferIds || allowedOfferIds.includes(o.id)));
+  const assignmentOffers = db.ofertas.filter((o) => (collection!=="coordinaciones"||db.ufs.find(u=>u.id===o.uf)?.tipo==="Bloque") && (o.semestre === semestre || o.id === values.oferta) && (!allowedOfferIds || allowedOfferIds.includes(o.id)));
   const multi = (key, label, opts) => (
     <fieldset>
       <legend>{label}</legend>
@@ -2003,6 +2017,7 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
         onSave({ ...defaults, ...values, id: item.id || values.id });
       }}
     >
+      {modal.pendingId && <p className="alert">Estás revisando una edición pendiente. Al guardar aplicarás estos valores sobre la versión actual y el grupo quedará en borrador para revisar su publicación.</p>}
       {partial && <p className="alert">Puedes guardar datos parciales como borrador. Completa y revisa las sesiones antes de publicar; no se borrarán al cambiar los periodos del grupo.</p>}
       {formError && <p className="alert error" role="alert">{formError}</p>}
       {collection === "profesores" && field(item.id?"nomina":"id","Usuario",{readOnly:!!item.id,defaultValue:item.nomina||item.id||"",hint:"El usuario es la nómina del profesor y también se utiliza en el Excel. No se puede editar después de crear el perfil."})}
@@ -2045,9 +2060,9 @@ function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
       )}
       {collection === "salones" && <>
         {field("edificio", "Edificio", { hint: "Ejemplo: CEDES o Aulas 6." })}
-        <label>Código de salón para entrega<input aria-label="Código de salón para entrega" list="official-room-codes" value={values.codigo||""} onChange={e=>change("codigo",e.target.value)}/><small>Conserva espacios y guiones: por ejemplo A-A6- 206. Puedes buscar en el catálogo de referencia o capturar un código oficial actualizado.</small></label>
-        <datalist id="official-room-codes">{roomCodes.map(r=><option key={r.codigo} value={r.codigo}>{r.descripcion}</option>)}</datalist>
-        {values.codigo && !roomCodes.some(r=>r.codigo===values.codigo) && <p className="muted">Este código no aparece en el catálogo de referencia. Verifícalo con Escolar; el catálogo puede no incluir salones nuevos.</p>}
+        <label>Código de salón para entrega{isArtBuilding(values.edificio)?<select aria-label="Código de salón para entrega" value={artRoomCode(values.numero)} onChange={e=>change("numero",e.target.value.replace(/^A-EA-/,""))}><option value="">Selecciona o captura el número de salón</option>{values.numero&&!roomCodeOptions(values.edificio,roomCodes).some(r=>r.codigo===artRoomCode(values.numero))&&<option value={artRoomCode(values.numero)}>{artRoomCode(values.numero)}</option>}{roomCodeOptions(values.edificio,roomCodes).map(r=><option key={r.codigo} value={r.codigo}>{r.codigo}</option>)}</select>:<input aria-label="Código de salón para entrega" list="official-room-codes" value={values.codigo||""} onChange={e=>change("codigo",e.target.value)}/>}<small>Para ATLI / Escuela de Arte / Escuela Arte se genera A-EA-número (ejemplo A-EA-110). El catálogo muestra solo códigos de ese edificio. En otros edificios conserva el formato oficial, por ejemplo A-A6- 206.</small></label>
+        <datalist id="official-room-codes">{roomCodeOptions(values.edificio,roomCodes).map(r=><option key={r.codigo} value={r.codigo}>{r.descripcion}</option>)}</datalist>
+        {values.codigo && !roomCodeOptions(values.edificio,roomCodes).some(r=>r.codigo===values.codigo) && <p className="muted">Este código no aparece en el catálogo de referencia. Verifícalo con Escolar; el catálogo puede no incluir salones nuevos.</p>}
         {field("numero", "Número de salón", { hint: "Ejemplo: 319 o 206; también admite letras." })}
         <p>Salón: <b>{values.edificio || "Edificio"}-{values.numero || "Número"}</b>. Su referencia interna se conserva al editar.</p>
         {field("capacidad", "Capacidad de alumnos", { type: "number", hint: "Número entero mayor a cero." })}

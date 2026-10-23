@@ -1,3 +1,10 @@
+## 4.4.1 (web-deploy)
+
+- ATLI/Escuela de Arte/Escuela Arte filtran y generan códigos A-EA-número; agrega códigos 107, 110 y 114 y evita duplicados entre alias.
+- Guardado simultáneo por registro para ofertas y asignaciones, con versiones pendientes persistidas ante conflictos y revisión antes de publicar.
+- Coordinación de bloques visible por grupo desde la ficha de oferta; selector restringido a bloques.
+- npm run dev y npm start cargan .env; guía de actualización para PC e iMac con LaunchAgents.
+
 ## 4.4.0 (web-deploy)
 
 - Activación explícita de contraseñas temporales docentes de prueba, con cambio obligatorio en el primer acceso.

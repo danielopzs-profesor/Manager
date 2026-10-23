@@ -1,3 +1,4 @@
+import {validRoomCode,isArtBuilding,artRoomCode} from "../shared/art-rooms.js";
 import ExcelJS from 'exceljs';
 import {calendar,list} from './academic.js';
 export const deliveryHeaders=['SEDE','PERIODO','ESCUELA TEC','DEPARTAMENTO','ESTATUS DEL GRUPO','CLAVE','ASIGNATURA','GRUPO','ATRIBUTOS','NOMINA','PROFESOR','RESPONSABILIDAD','TITULAR','FECHA INICIO','FECHA FIN','HORA INICIO','HORA FIN','DIAS','CODIGO EDIFICIOS Y SALAS','SALAS','SESCODE','REFERENCIAS','COMPONENTE','VACANTES','RESTRICCIONES CARRERA','RESTRICCIONES PROGRAMA','RESTRICCIONES CLASE (CLASS)','RESTRICCIONES COHORTE','RESTRICCIONES ATRIBUTO ESTUDIANTE'];
@@ -17,7 +18,8 @@ export async function exportDelivery(a,semesterId){
   for(const part of parts)if(!units.some(unit=>unit.teachers.includes(part.profesor)))units.push({session:null,teachers:[part.profesor]});
   for(const {session,teachers} of units){
    const room=a.salones.find(r=>r.id===session?.aula);
-   if(room?.codigo && !/^A-[A-Z0-9]+(?:- | )[^,\r\n]+$/.test(room.codigo))errors.push(`Grupo ${o.grupo||o.id}: el código de salón debe conservar los espacios y guiones oficiales; por ejemplo A-A6- 206. Revísalo en Salones con el catálogo de referencia.`);
+   const code=room&&isArtBuilding(room.edificio)?artRoomCode(room.numero):room?.codigo;
+   if(code && !validRoomCode(code))errors.push(`Grupo ${o.grupo||o.id}: el código de salón debe conservar los espacios y guiones oficiales; por ejemplo A-A6- 206. Revísalo en Salones con el catálogo de referencia.`);
    const segmentIds=list(session?.segmentos).length?list(session.segmentos):list(o.periodos);
    for(const segmentId of segmentIds.length?segmentIds:[null]){
     const segment=calendar(semester).find(r=>r.id===segmentId);
@@ -26,7 +28,7 @@ export async function exportDelivery(a,semesterId){
      const percentage=numeric(part?.porcentaje);
      if(percentage!==null&&!Number.isInteger(percentage))errors.push(`Grupo ${o.grupo||o.id}: ${professor?.nombre||teacherId} tiene responsabilidad decimal; el formato requiere un porcentaje entero. Corrige la asignación antes de exportar.`);
      const [start,end]=String(session?.horario||'').split('-');
-     rows.push(['MTY',semester.identificador||null,semester.escuela||null,'DART-D. Arte','ACTIVO',uf?.id||null,uf?.nombre||null,o.grupo||null,uf?list(uf.atributos??'PMT3').join(','):null,professor?.nomina||null,professor?.nombre||null,percentage,1,date(segment?.inicio),date(segment?.fin),time(start),time(end),Object.keys(dayCodes).filter(d=>list(session?.dias).includes(d)).map(d=>dayCodes[d]).join('')||null,room?.codigo||null,room?.nombre||session?.aula||null,'P',null,'CL',Number(o.alumnos)>0?numeric(o.alumnos):null,null,null,null,null,null]);
+     rows.push(['MTY',semester.identificador||null,semester.escuela||null,'DART-D. Arte','ACTIVO',uf?.id||null,uf?.nombre||null,o.grupo||null,uf?list(uf.atributos??'PMT3').join(','):null,professor?.nomina||null,professor?.nombre||null,percentage,1,date(segment?.inicio),date(segment?.fin),time(start),time(end),Object.keys(dayCodes).filter(d=>list(session?.dias).includes(d)).map(d=>dayCodes[d]).join('')||null,code||null,room?.nombre||session?.aula||null,'P',null,'CL',Number(o.alumnos)>0?numeric(o.alumnos):null,null,null,null,null,null]);
     }
    }
   }

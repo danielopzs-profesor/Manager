@@ -1240,3 +1240,5 @@ footer {
 .professor-icon-button{background:#e7ebf1;color:#46546b;box-shadow:0 4px 10px #092a5710;}
 .professor-icon-button:hover{background:#d7dfe9;}
 .professor-icon-button--add{background:#095de4;color:#fff;}.professor-icon-button--add:hover{background:#0649b5;}
+
+.record pre{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%;font-size:12px;}

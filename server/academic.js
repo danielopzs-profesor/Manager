@@ -1,3 +1,4 @@
+import {isArtBuilding} from "../shared/art-rooms.js";
 import {isAdmin} from "./permissions.js";
 import {historyCategory} from "./history.js";
 import { randomUUID, createHash } from "node:crypto";
@@ -418,7 +419,7 @@ export function validateAcademic(a) {
   for (const r of a.salones) {
     if (r.edificio || r.numero) {
       if (!nonempty(r.edificio) || !nonempty(r.numero)) fail("Completa el edificio y el número de salón; por ejemplo CEDES y 319.");
-      const key = r.edificio.trim().toLowerCase()+"|"+r.numero.trim().toLowerCase();
+      const key = (isArtBuilding(r.edificio)?"escuela-arte":r.edificio.trim().toLowerCase())+"|"+r.numero.trim().toLowerCase();
       if (roomPairs.has(key)) fail("Ya existe un salón en ese edificio con ese número. Edita el existente o elige otro número.");
       roomPairs.add(key);
     }
@@ -646,6 +647,7 @@ export function invalidate(a, before) {
 }
 export function publicAcademic(a, session) {
   const copy = structuredClone(a);
+  copy.pendingEdits=isAdmin(session.role)?(copy.pendingEdits||[]):[];
   copy.salones ||= [];
   copy.prestamos ||= [];
   copy.auditoria=copy.auditoria.map(r=>({...r,categoria:r.categoria||historyCategory(r.accion)}));

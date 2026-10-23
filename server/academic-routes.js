@@ -1,3 +1,5 @@
+import {isArtBuilding,artRoomCode} from "../shared/art-rooms.js";
+import {concurrentCollections,canRebase,queueEdit,pendingOffer} from "./concurrent-edits.js";
 import {exportDelivery} from "./delivery-excel.js";
 import {reportPDF} from "./report.js";
 import {isAdmin,accountRole,assignmentPermission,protectIdentities} from "./permissions.js";
@@ -32,21 +34,25 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
     }
     return db.academic;
   };
-  const change = async (req, fn) =>
+  const change = async (req, fn, edit = null) =>
     store.mutate(async (db) => {
       const a = migrateAcademic(db);
-      if (req.body.revision !== a.revision) {
-        const e = Error(
-          "La programación cambió. Recarga antes de guardar para no sobrescribir cambios de otro administrador.",
-        );
-        e.status = 409;
-        throw e;
-      }
+      const stale=req.body.revision!==a.revision;
+      const supportsPending=edit && concurrentCollections.includes(edit.collection) && Object.hasOwn(req.body,'baseItem');
+      const preserve=()=>{
+        edit.pendingId=queueEdit(a,req,edit.collection,edit.item);
+        audit(a,req.session.adminId||req.session.nomina,"Guardar edición pendiente",`Edición simultánea de ${edit.collection}; versión conservada para revisión, sin sobrescribir datos.`);
+      };
+      if(stale && !supportsPending){const e=Error("La programación cambió. Recarga antes de guardar para no sobrescribir cambios de otro administrador.");e.status=409;throw e;}
+      if(stale && !canRebase(a,req,edit.collection,edit.item)){preserve();return;}
       const before = structuredClone(a);
       await fn(a);
       protectIdentities(before,a);
       invalidate(a, before);
-      validateAcademic(a);
+      try{validateAcademic(a);}catch(error){
+        if(!stale||!supportsPending)throw error;
+        Object.assign(a,before);preserve();return;
+      }
       audit(
         a,
         req.session.adminId || req.session.nomina || "Configuración inicial",
@@ -121,6 +127,7 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
     if (collection === "salones" && (clean.edificio || clean.numero)) {
       clean.edificio = String(clean.edificio).trim(); clean.numero = String(clean.numero).trim();
       clean.nombre = `${clean.edificio}-${clean.numero}`;
+      if(isArtBuilding(clean.edificio))clean.codigo=artRoomCode(clean.numero);
     }
     for (const key of ["udc", "duracion", "porcentaje", "capacidad", "alumnos", "udc_maximas"])
       if (key in clean) clean[key] = Number(clean[key]);
@@ -132,6 +139,7 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
     }
     req.body.action = "Guardar " + collection;
     req.body.detail = `Registro ${clean.id}`;
+    const edit={collection,item:clean};
     await change(req, (a) => {
       const old = a[collection].find((r) => r.id === clean.id);
       assignmentPermission(a,req.session,collection,clean,old);
@@ -155,8 +163,12 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
       }
       if (old) Object.assign(old, clean);
       else a[collection].push(clean);
-    });
-    res.json({ ok: true, id: clean.id });
+      if(req.body.pendingId && isAdmin(req.session.role))a.pendingEdits=(a.pendingEdits||[]).filter(p=>!(p.id===req.body.pendingId&&p.collection===collection&&p.item.id===clean.id));
+    },edit);
+    res.json({ ok: true, id: clean.id, pending:!!edit.pendingId, pendingId:edit.pendingId });
+  });
+  app.post("/api/academic/pending/discard",auth,admin,async(req,res)=>{
+    await change(req,a=>{a.pendingEdits=(a.pendingEdits||[]).filter(p=>p.id!==req.body.id);});res.json({ok:true});
   });
   app.post("/api/academic/delete", auth, allocationAccess, async (req, res) => {
     const { collection, id } = req.body;
@@ -183,6 +195,7 @@ export function academicRoutes(app, { store, auth, admin, env = {} }) {
     await change(req, (a) => {
       const o = a.ofertas.find((o) => o.id === req.body.id);
       if (!o) throw Error("Oferta inexistente");
+      if((a.pendingEdits||[]).some(p=>pendingOffer(p)===o.id))throw Error("Hay ediciones pendientes de revisión para este grupo. Revísalas o descártalas antes de publicar.");
       const issues = publishIssues(a, o);
       if (issues.length) throw Error(issues.join(" "));
       o.estado = "Publicada";

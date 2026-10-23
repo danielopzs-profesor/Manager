@@ -1226,5 +1226,17 @@
   {
     "codigo": "A-A7- 336",
     "descripcion": "A-A7- 336 A7-336 Laboratorio de Térmica y Fluidos"
+  },
+  {
+    "codigo": "A-EA-110",
+    "descripcion": "Escuela de Arte · Salón 110"
+  },
+  {
+    "codigo": "A-EA-114",
+    "descripcion": "Escuela de Arte · Salón 114"
+  },
+  {
+    "codigo": "A-EA-107",
+    "descripcion": "Escuela de Arte · Salón 107"
   }
 ]

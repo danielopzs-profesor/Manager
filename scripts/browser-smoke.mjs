@@ -105,6 +105,13 @@ try {
   await dialog.getByRole("button", { name: "Guardar cambios" }).click();
   await dialog.waitFor({ state: "hidden" });
 
+  await page.getByRole("button",{name:"Ofertas",exact:true}).click();
+  await page.locator(".offer").first().getByRole("button",{name:"Editar coordinador",exact:true}).click();
+  assert.equal(await dialog.getByLabel("Profesor",{exact:true}).inputValue(),"L001");
+  await dialog.getByLabel("UDC adicionales de coordinación",{exact:true}).fill("0.5");
+  await dialog.getByRole("button",{name:"Guardar cambios",exact:true}).click();
+  await dialog.waitFor({state:"hidden"});
+  await page.getByRole("button",{name:"Profesores",exact:true}).click();
   await page
     .getByRole("heading", { name: "Mariana Torres", exact: true })
     .locator("..")
@@ -126,6 +133,20 @@ try {
   await dialog.getByLabel("Horario de trabajo: fin", {exact:true}).fill("18:00");
   await dialog.getByRole("button", {name:"Guardar cambios", exact:true}).click();
   await dialog.waitFor({state:"hidden"});
+  await page.getByRole("button",{name:"+ Salón",exact:true}).click();
+  await dialog.getByLabel("Edificio",{exact:true}).fill("Escuela de Arte");
+  await dialog.getByLabel("Número de salón",{exact:true}).fill("107");
+  assert.equal(await dialog.getByLabel("Código de salón para entrega",{exact:true}).inputValue(),"A-EA-107");
+  await dialog.getByLabel("Código de salón para entrega",{exact:true}).selectOption("A-EA-114");
+  assert.equal(await dialog.getByLabel("Número de salón",{exact:true}).inputValue(),"114");
+  await dialog.getByLabel("Código de salón para entrega",{exact:true}).selectOption("A-EA-107");
+  assert.ok((await dialog.locator("datalist option").evaluateAll(options=>options.map(o=>o.value))).every(code=>/^A-EA-\S+$/.test(code)));
+  await dialog.getByLabel("Capacidad de alumnos",{exact:true}).fill("20");
+  await dialog.getByLabel("Lun",{exact:true}).check();
+  await dialog.getByLabel("Horario de trabajo: inicio",{exact:true}).fill("08:00");
+  await dialog.getByLabel("Horario de trabajo: fin",{exact:true}).fill("18:00");
+  await dialog.getByRole("button",{name:"Guardar cambios",exact:true}).click();
+  await dialog.waitFor({state:"hidden"});
   await page.getByRole("button", { name: "Ofertas", exact: true }).click();
   await page.getByRole("button", { name: "Ver asignación →" }).first().click();
   await page.locator(".record").filter({ hasText: "09:00-13:00" })
@@ -135,6 +156,17 @@ try {
   await dialog.getByRole("button", { name: "Guardar cambios" }).click();
   await dialog.waitFor({ state: "hidden" });
 
+  await page.getByRole("button",{name:"Editar grupo",exact:true}).click();
+  await dialog.getByLabel("Número de alumnos del grupo",{exact:true}).fill("26");
+  await page.evaluate(async()=>{const a=await(await fetch('/api/academic')).json(),o=a.ofertas.find(x=>x.id==='O1');const r=await fetch('/api/academic/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({collection:'ofertas',item:{...o,alumnos:27},baseItem:o,revision:a.revision})});if(!r.ok)throw Error('Concurrent browser edit failed');});
+  await dialog.getByRole("button",{name:"Guardar cambios",exact:true}).click();
+  await dialog.waitFor({state:"hidden"});
+  await page.getByRole("heading",{name:"Ediciones pendientes",exact:true}).waitFor();
+  await page.getByRole("button",{name:"Revisar cambios",exact:true}).click();
+  assert.equal(await dialog.getByLabel("Número de alumnos del grupo",{exact:true}).inputValue(),"26");
+  await dialog.getByRole("button",{name:"Guardar cambios",exact:true}).click();
+  await dialog.waitFor({state:"hidden"});
+  assert.equal(await page.getByRole("heading",{name:"Ediciones pendientes",exact:true}).count(),0);
   await page.getByRole("button",{name:"Datos",exact:true}).click();
   const [draftDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("button",{name:"Descargar formato de entrega",exact:true}).click()]);
   await draftDownload.saveAs("/tmp/arte-screens/Formato_Entrega_Borrador.xlsx");

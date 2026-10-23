@@ -1,12 +1,12 @@
 {
   "name": "programacion-arte-fj27",
-  "version": "4.4.0",
+  "version": "4.4.1",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k \"node --watch server/index.js\" \"vite --host 0.0.0.0\"",
+    "dev": "concurrently -k \"node --env-file-if-exists=.env --watch server/index.js\" \"vite --host 0.0.0.0\"",
     "build": "vite build",
-    "start": "node server/index.js",
+    "start": "node --env-file-if-exists=.env server/index.js",
     "test": "node --test",
     "test:browser": "node scripts/browser-smoke.mjs",
     "start:web": "node server/hostinger.js"
