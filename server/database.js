@@ -55,7 +55,7 @@ export class DatabaseStore {
     );
     return validate(rows[0].data);
   }
-  async mutate(fn) {
+  async mutate(fn, { snapshot = true } = {}) {
     return transaction(this.pool, async (client) => {
       const { rows } = await client.query(
         "SELECT data FROM arte_workbook WHERE id=1 FOR UPDATE",
@@ -63,12 +63,14 @@ export class DatabaseStore {
       const db = rows[0].data;
       const previous = JSON.stringify(db);
       const next = validate((await fn(db)) || db);
+      if (snapshot) {
       await client.query("INSERT INTO arte_workbook_history(data) VALUES($1)", [
         previous,
       ]);
       await client.query(
         "DELETE FROM arte_workbook_history WHERE id NOT IN (SELECT id FROM arte_workbook_history ORDER BY id DESC LIMIT 30)",
       );
+      }
       await client.query("UPDATE arte_workbook SET data=$1 WHERE id=1", [
         JSON.stringify(next),
       ]);

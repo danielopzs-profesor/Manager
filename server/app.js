@@ -1,3 +1,5 @@
+import {isAdmin,accountRole,applyRolePolicy} from "./permissions.js";
+import {recordEvent,redact} from "./history.js";
 import express from "express";
 import session from "express-session";
 import helmet from "helmet";
@@ -16,21 +18,23 @@ import {
   publicAcademic,
   publishIssues,
 } from "./academic.js";
-import { passwordMatches } from "./accounts.js";
+import { passwordHash, passwordMatches } from "./accounts.js";
 import { originPolicy } from "./origins.js";
 export async function createApp({
   serverless = false,
+  desktop = false,
   env = process.env,
 } = {}) {
-  const production = env.NODE_ENV === "production" || serverless;
-  const policy = originPolicy(env, { serverless, production });
+  const production = env.NODE_ENV === "production" || serverless || desktop;
+  const policy = originPolicy(env, { serverless, production: production && !desktop });
   const publicUrl = policy.publicUrl;
+  if(desktop && !/^http:\/\/127\.0\.0\.1:\d+$/.test(publicUrl||""))throw Error("El servidor de escritorio debe usar una dirección local privada.");
   if (
     production &&
     (!env.ADMIN_PASSWORD ||
       !env.SESSION_SECRET ||
       env.SESSION_SECRET.length < 32 ||
-      !publicUrl?.startsWith("https://"))
+      (!desktop && !publicUrl?.startsWith("https://")))
   ) {
     throw Error(
       "Configura ADMIN_PASSWORD, SESSION_SECRET (32 caracteres mínimo) y una URL HTTPS",
@@ -46,13 +50,26 @@ export async function createApp({
     new Store(
       path.resolve(env.EXCEL_PATH || "data/Programación Arte FJ27.xlsx"),
     );
+  try {
   await store.init();
-  if (!(await store.read()).academic)
+  if ((await store.read()).academic?.deliveryManualVersion !== 1 || (await store.read()).academic?.facultyUsernameVersion !== 1)
     await store.mutate((db) => {
       migrateAcademic(db);
     });
+  await applyRolePolicy(store,env);
+  } catch(error) {
+    await runtime?.sessions.close();
+    await runtime?.pool.end();
+    throw error;
+  }
+  const pendingHistory = new Set();
+  const logEvent = event => {const job=recordEvent(store,event);pendingHistory.add(job);job.finally(()=>pendingHistory.delete(job));return job;};
   const app = express();
   if (serverless || env.TRUST_PROXY === "1") app.set("trust proxy", 1);
+  if(desktop){
+    if(!env.DESKTOP_TOKEN || env.DESKTOP_TOKEN.length<32)throw Error("Configura el token privado de escritorio.");
+    app.use("/api",(req,res,next)=>{const supplied=String(req.get("X-Arte-Desktop")||"");const expected=String(env.DESKTOP_TOKEN);if(Buffer.byteLength(supplied)!==Buffer.byteLength(expected)||!timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)))return res.status(403).json({error:"Acceso exclusivo de la aplicación de escritorio"});next();});
+  }
   app.use(helmet({ contentSecurityPolicy: production ? undefined : false }));
   app.use(express.json({ limit: "100kb" }));
   app.use(
@@ -64,11 +81,16 @@ export async function createApp({
       cookie: {
         httpOnly: true,
         sameSite: "strict",
-        secure: production,
+        secure: production && !desktop,
         maxAge: 8 * 3600000,
       },
     }),
   );
+  app.use("/api", (req,res,next) => {
+    res.on("finish",()=>{
+      if (res.statusCode >= 400) void logEvent({categoria:"errores",actor:req.session?.adminId || req.session?.nomina || "No autenticado",accion:"Solicitud rechazada",detalle:`${req.method} ${req.path.split("?")[0]} · HTTP ${res.statusCode}`,resultado:"error"});
+    });next();
+  });
   app.use("/api", (req, res, next) => {
     res.set("Cache-Control", "no-store");
     if (
@@ -81,12 +103,19 @@ export async function createApp({
       });
     next();
   });
+  const passwordGate=(req,res,entity)=>{
+    req.session.mustChangePassword=!!entity?.mustChangePassword;
+    if(req.session.mustChangePassword && !["/api/me","/api/password"].includes(req.path)){
+      res.status(403).json({error:"Elige tu contraseña personal para continuar.",mustChangePassword:true});return false;
+    }
+    return true;
+  };
   const auth = (req, res, next) => {
     if (!req.session.role)
       return res.status(401).json({ error: "Inicia sesión" });
-    if (["admin", "consulta"].includes(req.session.role))
+    if (req.session.adminId || req.session.role === "consulta" || (isAdmin(req.session.role) && !req.session.nomina))
       return accountAuth(req, res, next);
-    if (req.session.role === "profesor")
+    if (req.session.role === "profesor" || isAdmin(req.session.role))
       return store
         .read()
         .then((db) => {
@@ -95,12 +124,13 @@ export async function createApp({
           );
           if (
             !p ||
-            (p.passwordHash && p.passwordHash !== req.session.professorVersion)
+            (p.passwordHash && p.passwordHash !== req.session.professorVersion) ||
+            req.session.role !== (p.accessRole || "profesor")
           )
             return res.status(401).json({
               error: "Tu contraseña cambió. Cierra sesión y vuelve a ingresar.",
             });
-          next();
+          if(passwordGate(req,res,p))next();
         })
         .catch(next);
     next();
@@ -115,25 +145,25 @@ export async function createApp({
           (a) =>
             a.id === req.session.adminId &&
             a.hash === req.session.adminVersion &&
-            (a.role || "admin") === req.session.role,
+            accountRole(a) === req.session.role,
         )
       )
         return res.status(401).json({
           error:
             "Tu acceso cambió. Cierra sesión y vuelve a ingresar con tu cuenta individual.",
         });
-      if (!accounts.length && req.session.role !== "admin")
+      if (!accounts.length && !isAdmin(req.session.role))
         return res.status(401).json({ error: "Cuenta no disponible" });
       const account = accounts.find((a) => a.id === req.session.adminId);
       req.session.nomina = account?.role !== "consulta" ? account?.profesor || undefined : undefined;
-      next();
+      if(passwordGate(req,res,account))next();
     } catch (e) {
       next(e);
     }
   };
   const admin = (req, res, next) =>
-    req.session.role === "admin"
-      ? accountAuth(req, res, next)
+    isAdmin(req.session.role)
+      ? auth(req, res, next)
       : res.status(403).json({ error: "Solo administrador" });
   const equal = (a, b) => {
     const x = Buffer.from(a),
@@ -158,10 +188,13 @@ export async function createApp({
       const username = String(identifier).trim().toLowerCase();
       const db = await store.read();
       const accounts = db.academic?.admins || [];
-      let nomina, professorVersion;
-      const adminAccount = accounts.find((a) => a.id === username);
+      let nomina, professorVersion, facultyRole, mustChangePassword=false;
+      const linkedAccounts=accounts.filter(a=>db.academic?.profesores.some(p=>p.id===a.profesor&&(String(p.nomina||p.id).trim().toLowerCase()===username || (a.emailLogin && String(p.correo).trim().toLowerCase()===username))));
+      if(!accounts.some(a=>a.id===username)&&linkedAccounts.length>1)return res.status(401).json({error:"El usuario está asociado a varias cuentas. Solicita al administrador que revise la vinculación."});
+      const adminAccount = accounts.find((a) => a.id === username) || linkedAccounts[0];
       const bootstrap = !accounts.length && !username;
       if (adminAccount) {
+        mustChangePassword=!!adminAccount.mustChangePassword;
         if (!(await passwordMatches(password, adminAccount.hash)))
           return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
       } else if (bootstrap) {
@@ -169,73 +202,97 @@ export async function createApp({
           return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
       } else {
         const people = db.academic
-          ? db.academic.profesores.map((p) => ({ ...p, nomina: p.id }))
+          ? db.academic.profesores.map((p) => ({ ...p, internalId:p.id, nomina:p.nomina||p.id }))
           : db.Profesores;
         const email = String(identifier || "").trim().toLowerCase();
         const matches = people.filter(
-          (p) => String(p.correo || "").trim().toLowerCase() === email,
+          (p) => !!email && (String(p.nomina||"").trim().toLowerCase() === email || String(p.correo || "").trim().toLowerCase() === email),
         );
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || matches.length !== 1)
-          return res.status(401).json({ error: "Correo institucional o contraseña incorrectos" });
+        if (matches.length !== 1)
+          return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
         const p = matches[0];
         if (p.passwordHash) {
           if (!(await passwordMatches(password, p.passwordHash)))
             return res
               .status(401)
-              .json({ error: "Correo institucional o contraseña incorrectos" });
+              .json({ error: "Usuario o contraseña incorrectos" });
         } else if (production)
           return res.status(401).json({
             error:
               "Solicita al administrador que configure tu contraseña de acceso.",
           });
+        mustChangePassword=!!p.mustChangePassword;
+        facultyRole = p.accessRole || "profesor";
         professorVersion = p.passwordHash;
-        nomina = p.nomina;
+        nomina = p.internalId || p.nomina;
       }
       await new Promise((resolve, reject) =>
         req.session.regenerate((e) => (e ? reject(e) : resolve())),
       );
       req.session.role = adminAccount
-        ? adminAccount.role || "admin"
+        ? accountRole(adminAccount)
         : bootstrap
           ? "admin"
-          : "profesor";
+          : facultyRole || "profesor";
       req.session.nomina = nomina;
       req.session.professorVersion = professorVersion;
+      req.session.mustChangePassword=mustChangePassword;
       if (adminAccount) {
-        req.session.nomina = (adminAccount.role || "admin") === "admin" ? adminAccount.profesor || undefined : undefined;
+        req.session.nomina = (accountRole(adminAccount)) !== "consulta" ? adminAccount.profesor || undefined : undefined;
         req.session.adminId = adminAccount.id;
         req.session.adminVersion = adminAccount.hash;
       }
+      await logEvent({categoria:"accesos",actor:req.session.adminId || nomina || "Configuración inicial",accion:"Inicio de sesión",detalle:`Rol ${req.session.role}`});
       res.json({
         role: req.session.role,
+        mustChangePassword:req.session.mustChangePassword,
         nomina: req.session.nomina,
         adminId: req.session.adminId,
       });
     },
   );
-  app.post("/api/logout", (req, res) =>
-    req.session.destroy(() => {
+  app.post("/api/password",auth,async(req,res)=>{
+    if(!req.session.mustChangePassword)return res.status(400).json({error:"Tu cuenta no requiere cambio de contraseña inicial."});
+    if(req.body.password !== req.body.confirmation)throw Error("Las contraseñas no coinciden. Escríbelas iguales en ambos campos.");
+    const hash=await passwordHash(req.body.password);
+    await store.mutate(async db=>{
+      const a=db.academic,account=a.admins.find(x=>x.id===req.session.adminId),p=a.profesores.find(x=>x.id===req.session.nomina),identity=account||p;
+      const oldHash=account?.hash||p?.passwordHash;
+      if(!identity?.mustChangePassword||oldHash!==(account?req.session.adminVersion:req.session.professorVersion))throw Error("Tu acceso cambió. Cierra sesión y vuelve a ingresar.");
+      if(await passwordMatches(req.body.password,oldHash))throw Error("Elige una contraseña diferente de la temporal.");
+      if(account){account.hash=hash;account.mustChangePassword=false;req.session.adminVersion=hash;}
+      if(p){p.passwordHash=hash;p.mustChangePassword=false;req.session.professorVersion=hash;}
+    });
+    req.session.mustChangePassword=false;
+    await logEvent({categoria:"seguridad",actor:req.session.adminId||req.session.nomina,accion:"Elegir contraseña personal",detalle:"Se completó el cambio obligatorio de contraseña inicial."});
+    res.json({ok:true});
+  });
+  app.post("/api/logout", async (req, res) => {
+    await logEvent({categoria:"accesos",actor:req.session.adminId || req.session.nomina,accion:"Cierre de sesión"});
+    return req.session.destroy(() => {
       res.clearCookie("connect.sid");
       res.json({ ok: true });
-    }),
-  );
+    });
+  });
   app.get("/api/me", (req, res, next) => req.session.role ? auth(req, res, next) : next(), (req, res) =>
     res.json({
       role: req.session.role || null,
+      mustChangePassword:!!req.session.mustChangePassword,
       nomina: req.session.nomina,
       adminId: req.session.adminId,
     }),
   );
-  app.get("/api/config", (req, res) =>
+  app.get("/api/config", async (req, res) =>
     res.json({
       production,
-      version: "3.6.0",
+      accessPolicyActive: Boolean((await store.read()).academic?.rolePolicy),
+      version: "4.5.0",
       schema: 2,
       publicUrl,
       allowedOrigins: policy.origins,
     }),
   );
-  academicRoutes(app, { store, auth, admin });
+  academicRoutes(app, { store, auth, admin, env });
   app.use(
     ["/api/respond", "/api/classes", "/api/professors", "/api/import"],
     (req, res, next) =>
@@ -331,7 +388,8 @@ export async function createApp({
     );
   }
   app.use((err, req, res, next) => {
-    console.error(err.message);
+    console.error(redact(err.message));
+    void logEvent({categoria:"errores",actor:req.session?.adminId || req.session?.nomina,accion:"Error de operación",detalle:redact(err.message),resultado:"error"});
     const databaseError =
       typeof err.code === "string" && /^[0-9A-Z]{5}$/.test(err.code);
     res.status(databaseError ? 503 : err.status || 400).json({
@@ -343,6 +401,7 @@ export async function createApp({
   return {
     app,
     close: async () => {
+      await Promise.allSettled([...pendingHistory]);
       await runtime?.sessions.close();
       await runtime?.pool.end();
     },

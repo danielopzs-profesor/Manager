@@ -23,8 +23,8 @@ test('administrador docente: vinculación, respuestas propias, cambio de víncul
     assert.equal((await change('/academic/admin', {id:'admin.docente', nombre:'Docente', password:'personal-password-123', profesor:'L001'})).status, 200);
     assert.equal((await data()).miProfesor, 'L001');
     assert.equal((await (await req('/me')).json()).nomina, 'L001');
-    assert.equal((await change('/academic/admin', {id:'duplicate', nombre:'Duplicado', password:'personal-password-456', profesor:'L001'})).status, 400);
-    assert.equal((await change('/academic/admin', {id:'invalid', nombre:'Inválido', password:'personal-password-456', profesor:'missing'})).status, 400);
+    assert.equal((await change('/academic/admin', {id:'duplicate', nombre:'Duplicado', password:'personal-password-456', profesor:'L001'})).status, 403);
+    assert.equal((await change('/academic/admin', {id:'invalid', nombre:'Inválido', password:'personal-password-456', profesor:'missing'})).status, 403);
     assert.equal((await change('/academic/approve', {profesor:'L001', semestre:'FJ27', motivo:'Propia'})).status, 403);
     assert.equal((await change('/academic/respond', {ids:['R1'], estatus:'Aceptada'})).status, 400, 'No responder borradores');
     assert.equal((await change('/academic/publish', {id:'O1'})).status, 200);

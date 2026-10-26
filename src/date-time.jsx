@@ -16,11 +16,11 @@ export function SemesterDatePicker({value,onChange}) {
   </div><small>Selecciona un lunes habilitado. Las 15 semanas lectivas y las dos intermedias se calculan a partir de esta fecha.</small>
  </fieldset>;
 }
-export function TimeRangePicker({value='',onChange,label}) {
+export function TimeRangePicker({value='',onChange,label,required=true}) {
  const [start='',end='']=String(value).split('-');
  return <fieldset className="time-picker"><legend>{label}</legend><div className="time-fields">
- <label>Inicio<input type="time" aria-label={label+': inicio'} required value={start} onChange={e=>onChange(e.target.value+'-'+end)}/></label>
- <label>Fin<input type="time" aria-label={label+': fin'} required value={end} min={start||undefined} onChange={e=>onChange(start+'-'+e.target.value)}/></label>
+ <label>Inicio<input type="time" aria-label={label+': inicio'} required={required} value={start} onChange={e=>onChange(e.target.value+'-'+end)}/></label>
+ <label>Fin<input type="time" aria-label={label+': fin'} required={required} value={end} min={start||undefined} onChange={e=>onChange(start+'-'+e.target.value)}/></label>
  </div>{start&&end&&start>=end?<p className="field-error" role="alert">La hora de fin debe ser posterior al inicio. Elige una hora de salida más tarde.</p>:<small>Elige inicio y fin. El sistema guardará el intervalo en formato de 24 horas.</small>}</fieldset>;
 }
 export function explainError(message) {

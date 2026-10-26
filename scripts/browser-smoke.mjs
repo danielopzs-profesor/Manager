@@ -1,5 +1,5 @@
 import { chromium } from "playwright";
-import { mkdtemp, rm, mkdir } from "node:fs/promises";
+import { mkdtemp, rm, mkdir, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
@@ -71,6 +71,8 @@ try {
     await cal.getByLabel("Mes de inicio").selectOption("1");
     assert.equal(await cal.getByRole("button",{name:"Seleccionar 2 de febrero de 2027",exact:true}).isDisabled(),true);
     await cal.getByRole("button",{name:"Seleccionar 1 de febrero de 2027",exact:true}).click();
+    await cal.getByLabel("Identificador del periodo para entrega",{exact:true}).fill("202711");
+    await cal.getByLabel("Fecha fin · P1",{exact:true}).fill("2027-03-05");
     await cal.getByRole("button",{name:"Guardar cambios",exact:true}).click();
     await cal.waitFor({state:"hidden"});
   }
@@ -85,6 +87,16 @@ try {
   await dialog.getByRole("button", { name: "Guardar cambios" }).click();
   await dialog.waitFor({ state: "hidden" });
   await page.getByRole("heading", { name: "Ana Ejemplo" }).waitFor();
+  await page.getByRole("heading",{name:"Ana Ejemplo",exact:true}).locator("..").getByRole("button",{name:"Editar",exact:true}).click();
+  assert.equal(await dialog.getByLabel("Usuario",{exact:true}).inputValue(),"L004");
+  assert.equal(await dialog.getByLabel("Usuario",{exact:true}).getAttribute("readonly"),"");
+  assert.equal(await dialog.getByLabel("Nómina para formato de entrega",{exact:true}).count(),0);
+  await dialog.getByRole("button",{name:"Cerrar",exact:true}).click();
+
+  const [cardDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("heading",{name:"Ana Ejemplo",exact:true}).locator("..").getByRole("button",{name:"Descargar ficha JPEG",exact:true}).click()]);
+  await cardDownload.saveAs("/tmp/arte-screens/ficha-profesor.jpg");
+  const jpeg=await readFile("/tmp/arte-screens/ficha-profesor.jpg");assert.equal(jpeg[0],255);assert.equal(jpeg[1],216);
+
   await page.getByRole("heading", { name: "Ana Ejemplo", exact: true }).locator("..")
     .getByRole("button", { name: "Asignar unidad de formación", exact: true }).click();
   await dialog.getByLabel("Oferta / grupo", { exact: true }).selectOption("O1");
@@ -107,6 +119,7 @@ try {
   await page.getByRole("button", { name: "+ Salón", exact: true }).click();
   await dialog.getByLabel("Edificio", {exact:true}).fill("CEDES");
   await dialog.getByLabel("Número de salón", {exact:true}).fill("319");
+  await dialog.getByLabel("Código de salón para entrega",{exact:true}).fill("A-CD- 319");
   await dialog.getByLabel("Capacidad de alumnos", {exact:true}).fill("30");
   await dialog.getByLabel("Lun", {exact:true}).check();
   await dialog.getByLabel("Horario de trabajo: inicio", {exact:true}).fill("08:00");
@@ -122,10 +135,19 @@ try {
   await dialog.getByRole("button", { name: "Guardar cambios" }).click();
   await dialog.waitFor({ state: "hidden" });
 
+  await page.getByRole("button",{name:"Datos",exact:true}).click();
+  const [draftDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("button",{name:"Descargar formato de entrega",exact:true}).click()]);
+  await draftDownload.saveAs("/tmp/arte-screens/Formato_Entrega_Borrador.xlsx");
+  await page.getByRole("button",{name:"Ofertas",exact:true}).click();
+  await page.getByRole("button",{name:"Ver asignación →"}).first().click();
   await page
     .getByRole("button", { name: "Publicar oferta", exact: true })
     .click();
   await page.getByText("Oferta publicada. Ya puedes compartirla.").waitFor();
+  await page.getByRole("button",{name:"Datos",exact:true}).click();
+  const [deliveryDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("button",{name:"Descargar formato de entrega",exact:true}).click()]);
+  await deliveryDownload.saveAs("/tmp/arte-screens/Formato_Entrega.xlsx");
+  assert.equal((await readFile("/tmp/arte-screens/Formato_Entrega.xlsx")).subarray(0,2).toString(),"PK");
   await page.getByRole("button", {name:"Salones",exact:true}).click();
   await page.getByRole("heading", {name:"CEDES-319",exact:true}).waitFor();
   await page.getByText("09:00-13:00 · Laboratorio",{exact:true}).waitFor();
@@ -151,6 +173,7 @@ try {
   await page.getByRole("button", { name: "+ Usuario", exact: true }).click();
   await dialog.getByLabel("Usuario", { exact: true }).fill("admin.uno");
   await dialog.getByLabel("Nombre", { exact: true }).fill("Admin Uno");
+  await dialog.locator("select[name=role]").selectOption("admin");
   await dialog.locator("select[name=profesor]").selectOption("L001");
   await dialog
     .getByLabel("Contraseña", { exact: false })
@@ -267,6 +290,64 @@ try {
     path: "/tmp/arte-screens/professor-mobile.png",
     fullPage: true,
   });
+
+  await page.getByRole("button",{name:"Coordinación",exact:true}).click();
+  await page.getByRole("button",{name:"Ver asignación →",exact:true}).first().click();
+  assert.equal(await page.getByRole("button",{name:"Publicar oferta",exact:true}).count(),0);
+  await page.getByRole("button",{name:"Asignar profesor",exact:true}).click();
+  assert.equal(await dialog.getByLabel("Oferta / grupo",{exact:true}).locator("option").count(),2);
+  await dialog.getByRole("button",{name:"Cerrar",exact:true}).click();
+  await page.getByRole("button",{name:"Cerrar sesión",exact:true}).click();
+  await store.mutate(db=>{const a=db.academic.admins.find(a=>a.id==="admin.uno");a.role="superadmin";a.protegido=true;});
+  await page.getByLabel("Usuario",{exact:true}).fill("admin.uno");
+  await page.getByLabel("Contraseña",{exact:true}).fill("browser-personal-password");
+  await page.getByRole("button",{name:"Ingresar →",exact:true}).click();
+  await page.getByRole("button",{name:"Profesores",exact:true}).click();
+  const marianaPanel=page.getByRole("heading",{name:"Mariana Torres",exact:true}).locator("..");
+  assert.equal(await marianaPanel.getByRole("checkbox").isDisabled(),true);
+  const actions=marianaPanel.getByRole("group",{name:"Acciones de Mariana Torres"});
+  assert.deepEqual(await actions.getByRole("button").evaluateAll(bs=>bs.map(b=>b.getAttribute("aria-label"))),["Asignar unidad de formación","Descargar ficha JPEG","Editar","Compartir oferta","Eliminar"]);
+  await page.setViewportSize({width:390,height:844});
+  const positions=await actions.getByRole("button").evaluateAll(bs=>bs.map(b=>({y:b.getBoundingClientRect().top,w:b.getBoundingClientRect().width,title:b.title})));
+  assert.equal(new Set(positions.map(b=>b.y)).size,1);
+  assert.ok(positions.every(b=>b.w>=44&&b.title));
+  await page.screenshot({path:"/tmp/arte-screens/professor-icons-mobile.png",fullPage:true});
+
+  assert.equal(await page.getByRole("button",{name:"Cuenta administrativa",exact:true}).count(),0);
+
+  await page.getByRole("button",{name:"Usuarios y permisos",exact:true}).click();
+  const superAccount=page.getByText("admin.uno ·",{exact:false}).locator("../..");
+  await superAccount.getByRole("button",{name:"Editar / contraseña",exact:true}).click();
+  assert.equal(await dialog.getByLabel("Rol",{exact:true}).isDisabled(),true);
+  assert.equal(await dialog.locator("form").evaluate(f=>new FormData(f).get("role")),"superadmin");
+  assert.ok(await dialog.getByLabel("Combinar con perfil de profesor (opcional)").isEnabled());
+  await dialog.getByRole("button",{name:"Confirmar",exact:true}).click();
+  await dialog.waitFor({state:"hidden"});
+  await page.getByRole("button",{name:"Historial",exact:true}).click();
+  await page.getByLabel("Categoría de historial").selectOption("accesos");
+  const [historyDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("link",{name:"Descargar TXT",exact:true}).click()]);
+  await historyDownload.saveAs("/tmp/arte-screens/historial.txt");
+  assert.match(await readFile("/tmp/arte-screens/historial.txt","utf8"),/Inicio de sesión/);
+  await page.getByRole("button",{name:"Datos",exact:true}).click();
+  const [pdfDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("link",{name:"Descargar reporte PDF",exact:true}).click()]);
+  await pdfDownload.saveAs("/tmp/arte-screens/reporte.pdf");
+  assert.equal((await readFile("/tmp/arte-screens/reporte.pdf")).subarray(0,8).toString(),"%PDF-1.4");
+
+  await page.getByRole("button",{name:"Usuarios y permisos",exact:true}).click();
+  await page.getByRole("button",{name:"Activar contraseñas temporales de prueba",exact:true}).click();
+  await dialog.getByLabel("Escribe ACTIVAR PRUEBA",{exact:true}).fill("ACTIVAR PRUEBA");
+  await dialog.getByRole("button",{name:"Confirmar",exact:true}).click();
+  await dialog.waitFor({state:"hidden"});
+  await page.getByRole("button",{name:"Cerrar sesión",exact:true}).click();
+  await page.getByLabel("Usuario",{exact:true}).fill("L004");
+  await page.getByLabel("Contraseña",{exact:true}).fill("temporal123");
+  await page.getByRole("button",{name:"Ingresar →",exact:true}).click();
+  await page.getByRole("heading",{name:"Elige tu contraseña personal",exact:true}).waitFor();
+  await dialog.getByLabel("Nueva contraseña",{exact:true}).fill("browser-own-password-123");
+  await dialog.getByLabel("Confirmar contraseña",{exact:true}).fill("browser-own-password-123");
+  await dialog.getByRole("button",{name:"Guardar mi contraseña",exact:true}).click();
+  await dialog.waitFor({state:"hidden"});
+  assert.equal(await page.evaluate(async()=>{const r=await fetch('/api/me');return (await r.json()).mustChangePassword;}),false);
   assert.deepEqual(failures, []);
   console.log(
     "Navegador: creación de profesor y administrador, publicación, respaldos y aceptación docente correctos. Desktop y móvil sin errores JS ni desbordamiento.",

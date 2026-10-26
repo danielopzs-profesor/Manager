@@ -1,3 +1,5 @@
+import {isAdmin} from "./permissions.js";
+import {historyCategory} from "./history.js";
 import { randomUUID, createHash } from "node:crypto";
 export const SEGMENTS = ["P1", "I1", "P2", "I2", "P3"];
 export const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -9,8 +11,23 @@ const fail = (message) => {
 const has = (xs, id) => xs.find((x) => x.id === id);
 const nonempty = (v) => typeof v === "string" && v.trim().length > 0;
 const number = (v, min = 0) => Number.isFinite(v) && v >= min;
+function deliveryDefaults(a) {
+ if(a.deliveryManualVersion !== 1){
+   const current=a.semestres.find(s=>s.id === "FJ27");
+   if(current?.identificador === "202713"){
+     current.identificador="202711";
+     audit(a,"Sistema","Actualizar identificador institucional FJ27","ManualCargaMasiva: FJ 2027 corresponde a 202711. Se corrigió 202713 según confirmación del responsable.");
+   }
+   a.deliveryManualVersion=1;
+ }
+ for(const u of a.ufs) u.atributos ??= "PMT3";
+ for(const s of a.semestres){s.identificador ??= s.id === "FJ27" ? "202711" : "";s.escuela ??= "AD-Arquitectura, Arte y Diseño";}
+ for(const p of a.profesores)if(!p.nomina)p.nomina=p.id;
+ a.facultyUsernameVersion=1;
+ return a;
+}
 export function migrateAcademic(db) {
-  if (db.academic) { db.academic.salones ||= []; db.academic.prestamos ||= []; return db.academic; }
+  if (db.academic) { db.academic.salones ||= []; db.academic.prestamos ||= []; return deliveryDefaults(db.academic); }
   const a = {
     version: 2,
     revision: 1,
@@ -81,7 +98,7 @@ export function migrateAcademic(db) {
       "Se conservaron clases previas como borradores. Clasificar docentes, verificar grupos, periodos y fechas antes de publicar.",
   });
   db.academic = a;
-  return a;
+  return deliveryDefaults(a);
 }
 export function list(value) {
   return String(value || "")
@@ -93,7 +110,7 @@ export function segments(o) {
   return list(o.periodos);
 }
 export function limit(p) {
-  return p.tipo === "Cátedra" ? 10 : p.tipo === "Planta" ? 14 : null;
+  return p.tipo === "Cátedra" ? 10 : p.tipo === "Planta" ? 14 : ["Cátedra interna","Préstamo"].includes(p.tipo) && Number(p.udc_maximas)>0 ? Number(p.udc_maximas) : null;
 }
 export function workload(a, profesor, semestre) {
   const offers = a.ofertas.filter((o) => o.semestre === semestre);
@@ -181,13 +198,13 @@ const dateAdd = (start, days) =>
     .toISOString()
     .slice(0, 10);
 export function calendar(semester) {
-  if (!semester?.inicio) return [];
+  if (!semester) return [];
   return SEGMENTS.map((id, i) => {
     const start = [0, 35, 42, 77, 84][i];
     return {
       id,
-      inicio: dateAdd(semester.inicio, start),
-      fin: dateAdd(semester.inicio, start + ([1, 3].includes(i) ? 4 : 34)),
+      inicio: semester[id+"_inicio"] || (semester.inicio ? dateAdd(semester.inicio, start) : ""),
+      fin: semester[id+"_fin"] || (semester.inicio ? dateAdd(semester.inicio, start + ([1, 3].includes(i) ? 4 : 34)) : ""),
     };
   });
 }
@@ -203,6 +220,7 @@ export function distribution(a, profesor, semestre) {
         list(s.segmentos).includes(segmento),
     );
     const weekly = ss.reduce((n, s) => {
+      if (!validSessionTime(s)) return n;
       const [start, end] = s.horario.split("-");
       const minutes = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
       return n + ((minutes(end) - minutes(start)) / 60) * list(s.dias).length;
@@ -238,7 +256,7 @@ export function contract(a, profesor, semestre) {
 }
 export function conflicts(a, semestre) {
   const sessions = a.sesiones.filter(
-    (s) => has(a.ofertas, s.oferta)?.semestre === semestre,
+    (s) => has(a.ofertas, s.oferta)?.semestre === semestre && validSessionTime(s),
   );
   const out = [];
   for (let i = 0; i < sessions.length; i++)
@@ -275,15 +293,26 @@ export function groupBase(o) {
     null
   );
 }
+export function validSessionTime(s) {return /^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$/.test(s.horario) && s.horario.slice(0,5)<s.horario.slice(6);}
+export function sessionIssues(a,s) {
+ const o=has(a.ofertas,s.oferta), issues=[];
+ if(!o)return ["Selecciona el grupo de esta sesión."];
+ if(!nonempty(s.aula))issues.push("Falta seleccionar el salón de la sesión.");
+ if(!validSessionTime(s))issues.push("Completa las horas de inicio y fin; la salida debe ser posterior a la entrada.");
+ if(!list(s.dias).length||list(s.dias).some(d=>!DAYS.includes(d)))issues.push("Selecciona los días de la sesión.");
+ if(!list(s.segmentos).length||list(s.segmentos).some(seg=>!segments(o).includes(seg)))issues.push(`Revisa los periodos de la sesión: deben pertenecer a ${o.periodos || 'los periodos pendientes del grupo'}. Puedes corregirlos en Sesiones y horarios.`);
+ if(!list(s.profesores).length||list(s.profesores).some(p=>!a.participaciones.some(x=>x.oferta===o.id&&x.profesor===p)))issues.push("Selecciona docentes con responsabilidad asignada en este grupo.");
+ if(o.modalidad==='Intensiva'&&list(s.dias).some(d=>['Sáb','Dom'].includes(d)))issues.push("Las intensivas se programan de lunes a viernes.");
+ return issues;
+}
 export function roomIssues(a, session) {
   const room = (a.salones || []).find((r) => r.id === session.aula);
   if (!room) return [];
-  if (typeof session.horario !== "string") return ["Horario de sesión inválido"];
   const o = a.ofertas.find((o) => o.id === session.oferta);
   const issues = [];
   if (list(session.dias).some((d) => !list(room.dias).includes(d)) ||
-      session.horario.slice(0,5) < room.horario.slice(0,5) ||
-      session.horario.slice(6) > room.horario.slice(6)) issues.push(`La sesión está fuera del horario de trabajo de ${room.nombre}: ${room.dias}, ${room.horario}. Elige uno de esos días y horas dentro de ese rango.`);
+      (validSessionTime(session) && (session.horario.slice(0,5) < room.horario.slice(0,5) ||
+      session.horario.slice(6) > room.horario.slice(6)))) issues.push(`La sesión está fuera del horario de trabajo de ${room.nombre}: ${room.dias}, ${room.horario}. Elige uno de esos días y horas dentro de ese rango.`);
   if (Number(o?.alumnos || 0) > room.capacidad) issues.push(`El grupo tiene ${o?.alumnos} alumnos y ${room.nombre} tiene capacidad para ${room.capacidad}. Selecciona un salón más grande o corrige el número de alumnos.`);
   return issues;
 }
@@ -292,6 +321,8 @@ export function publishIssues(a, o) {
   const parts = a.participaciones.filter((p) => p.oferta === o.id);
   if (Math.abs(parts.reduce((n, p) => n + p.porcentaje, 0) - 100) > 0.00001)
     errors.push("La responsabilidad debe sumar 100 %.");
+  if (!o.clave.trim()) errors.push("Falta la clave única del grupo.");
+  if (!segments(o).length) errors.push("Selecciona los periodos del grupo.");
   if (!o.grupo.trim()) errors.push("Falta el número de grupo.");
   const base = groupBase(o);
   if (
@@ -317,7 +348,7 @@ export function publishIssues(a, o) {
   ]);
   for (const p of ps) {
     const l = workload(a, p, o.semestre);
-    if (l.max === null) errors.push(`Clasifica al profesor ${p}.`);
+    if (l.max === null) errors.push(["Cátedra interna","Préstamo"].includes(has(a.profesores,p)?.tipo) ? `Define el tope semestral de UDC del profesor ${p}.` : `Clasifica al profesor ${p}.`);
     else if (l.estado === "Sobrecarga pendiente")
       errors.push(`Falta aprobación de sobrecarga para ${p}.`);
   }
@@ -343,6 +374,7 @@ export function publishIssues(a, o) {
   )
     errors.push("Hay conflictos de profesor o aula.");
   for (const session of a.sesiones.filter((s) => s.oferta === o.id)) {
+    errors.push(...sessionIssues(a, session).map(message=>`Sesión ${session.id}: ${message}`));
     errors.push(...roomIssues(a, session));
     if ((a.salones || []).some((r) => r.id === session.aula) && !(Number(o.alumnos) > 0)) errors.push("Captura el número de alumnos del grupo para verificar el aforo.");
   }
@@ -354,7 +386,7 @@ export function validateAcademic(a) {
   for (const account of a.admins || [])
     if (
       account.role !== undefined &&
-      !["admin", "consulta"].includes(account.role)
+      !["admin", "superadmin", "profesor", "consulta"].includes(account.role)
     )
       fail("Rol de cuenta inválido");
   for (const key of [
@@ -402,16 +434,20 @@ export function validateAcademic(a) {
   const linked = new Set();
   for (const account of a.admins || []) {
     if (!account.profesor) continue;
-    if ((account.role || "admin") !== "admin" || !a.profesores.some((p) => p.id === account.profesor) || linked.has(account.profesor)) fail("Vinculación de profesor inválida o duplicada");
+    if (!(["admin","superadmin","profesor"].includes(account.role || "consulta")) || !a.profesores.some((p) => p.id === account.profesor) || linked.has(account.profesor)) fail("Vinculación de profesor inválida o duplicada");
     linked.add(account.profesor);
   }
   for (const p of a.profesores) {
     if (
       !nonempty(p.nombre) ||
       !nonempty(p.correo) ||
-      !["Planta", "Cátedra", "Por clasificar"].includes(p.tipo)
+      !["Planta", "Cátedra", "Cátedra interna", "Préstamo", "Por clasificar"].includes(p.tipo)
     )
       fail("Profesor inválido");
+  }
+  for(const p of a.profesores){
+    if(p.tipo==="Préstamo"&&!nonempty(p.area))fail("Indica el área de origen del profesor de préstamo.");
+    if(p.udc_maximas && (!number(Number(p.udc_maximas),0.01)))fail("Tope de carga inválido.");
   }
   for (const u of a.ufs)
     if (
@@ -422,6 +458,11 @@ export function validateAcademic(a) {
       fail("Unidad de formación inválida");
   for (const s of a.semestres) {
     if (!nonempty(s.nombre)) fail("Nombre de semestre obligatorio");
+    for(const id of SEGMENTS){
+      for(const suffix of ["inicio","fin"]){const v=s[id+"_"+suffix];if(v && (!/^\d{4}-\d{2}-\d{2}$/.test(v)||!Number.isFinite(Date.parse(v+"T00:00:00Z"))||dateAdd(v,0)!==v))fail(`Fecha inválida en ${id}: selecciona una fecha del calendario.`);}
+      const range=calendar(s).find(r=>r.id===id);if(range.inicio&&range.fin&&range.fin<range.inicio)fail(`En ${id}, la fecha final debe ser igual o posterior a la inicial.`);
+    }
+    const ranges=calendar(s);for(let i=1;i<ranges.length;i++)if(ranges[i-1].fin&&ranges[i].inicio&&ranges[i].inicio<=ranges[i-1].fin)fail(`Las fechas de ${ranges[i].id} se empalman con ${ranges[i-1].id}. Ajusta el calendario del semestre.`);
     if (
       s.inicio &&
       (!/^\d{4}-\d{2}-\d{2}$/.test(s.inicio) ||
@@ -436,16 +477,17 @@ export function validateAcademic(a) {
     if (
       !has(a.ufs, o.uf) ||
       !has(a.semestres, o.semestre) ||
-      !nonempty(o.clave) ||
+      typeof o.clave !== "string" ||
       typeof o.grupo !== "string" ||
       !number(o.udc) ||
       !["Borrador", "Publicada"].includes(o.estado)
     )
       fail("Oferta inválida");
     const key = JSON.stringify([o.semestre, o.clave]);
-    if (keys.has(key)) fail("La clave única ya existe en ese semestre");
-    keys.add(key);
+    if (o.clave && keys.has(key)) fail("La clave única ya existe en ese semestre");
+    if (o.clave) keys.add(key);
     const ps = segments(o).join(",");
+    if (!ps && o.estado === "Borrador") continue;
     if (o.modalidad === "Intensiva") {
       if (
         o.duracion !== 1 ||
@@ -505,29 +547,10 @@ export function validateAcademic(a) {
     cs.add(c.oferta);
   }
   for (const s of a.sesiones) {
-    const o = has(a.ofertas, s.oferta);
-    if (roomIssues(a, s).length) fail(roomIssues(a, s).join(" "));
-    if (
-      !o ||
-      !nonempty(s.aula) ||
-      !/^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$/.test(s.horario) ||
-      s.horario.slice(0, 5) >= s.horario.slice(6) ||
-      !list(s.dias).length ||
-      list(s.dias).some((d) => !DAYS.includes(d)) ||
-      !list(s.segmentos).length ||
-      list(s.segmentos).some((seg) => !segments(o).includes(seg)) ||
-      !list(s.profesores).length ||
-      list(s.profesores).some(
-        (p) =>
-          !a.participaciones.some((x) => x.oferta === o.id && x.profesor === p),
-      )
-    )
-      fail("Sesión inválida: revisa participantes, días, horario y segmentos");
-    if (
-      o.modalidad === "Intensiva" &&
-      list(s.dias).some((d) => ["Sáb", "Dom"].includes(d))
-    )
-      fail("Las intensivas se programan de lunes a viernes");
+    const o=has(a.ofertas,s.oferta);
+    if(!o) fail("Selecciona un grupo existente para guardar la sesión.");
+    if(roomIssues(a,s).length) fail(roomIssues(a,s).join(" "));
+    if(o.estado === "Publicada" && sessionIssues(a,s).length) fail(sessionIssues(a,s).join(" "));
   }
   for (const sem of a.semestres) {
     for (const c of conflicts(a, sem.id)) if (c.aula && (a.salones || []).some((r) => r.id.toLowerCase() === c.aula.trim().toLowerCase())) fail(`Empalme en ${a.salones.find((r)=>r.id.toLowerCase()===c.aula.trim().toLowerCase())?.nombre || c.aula}: grupos ${a.ofertas.find((o)=>o.id===c.oferta1)?.grupo || c.oferta1} y ${a.ofertas.find((o)=>o.id===c.oferta2)?.grupo || c.oferta2}. Cambia el salón, el día, la hora o el periodo de una de las sesiones.`);
@@ -540,9 +563,11 @@ export function audit(a, actor, accion, detalle, cambios = []) {
     fecha: new Date().toISOString(),
     actor,
     accion,
+    categoria: historyCategory(accion),
     detalle,
     cambios,
   });
+  if(a.auditoria.length>10000)a.auditoria=a.auditoria.slice(-10000);
   a.revision++;
 }
 export function diffAcademic(before, after) {
@@ -623,12 +648,13 @@ export function publicAcademic(a, session) {
   const copy = structuredClone(a);
   copy.salones ||= [];
   copy.prestamos ||= [];
+  copy.auditoria=copy.auditoria.map(r=>({...r,categoria:r.categoria||historyCategory(r.accion)}));
   copy.profesores = copy.profesores.map(({ passwordHash, ...p }) => ({
     ...p,
     hasPassword: !!passwordHash,
   }));
   copy.admins = copy.admins.map(({ hash, ...p }) => p);
-  if (session.role === "admin") return copy;
+  if (isAdmin(session.role)) return copy;
   if (session.role === "consulta") {
     copy.admins = [];
     copy.auditoria = [];
@@ -640,8 +666,9 @@ export function publicAcademic(a, session) {
     return copy;
   }
   const id = session.nomina;
+  const coordinated = new Set(copy.coordinaciones.filter(c=>c.profesor===id).map(c=>c.oferta));
   copy.prestamos = copy.prestamos.filter((p) => p.profesor === id);
-  copy.profesores = copy.profesores.filter((p) => p.id === id);
+  if (!coordinated.size) copy.profesores = copy.profesores.filter((p) => p.id === id);
   const ids = new Set([
     ...copy.participaciones
       .filter((p) => p.profesor === id)
@@ -651,18 +678,18 @@ export function publicAcademic(a, session) {
       .map((c) => c.oferta),
   ]);
   copy.ofertas = copy.ofertas.filter(
-    (o) => ids.has(o.id) && o.estado === "Publicada",
+    (o) => (ids.has(o.id) && o.estado === "Publicada") || coordinated.has(o.id),
   );
   const visible = new Set(copy.ofertas.map((o) => o.id));
   copy.participaciones = copy.participaciones.filter(
-    (p) => p.profesor === id && visible.has(p.oferta),
+    (p) => (p.profesor === id || coordinated.has(p.oferta)) && visible.has(p.oferta),
   );
   copy.coordinaciones = copy.coordinaciones.filter(
     (c) => c.profesor === id && visible.has(c.oferta),
   );
   copy.sesiones = copy.sesiones
-    .filter((s) => visible.has(s.oferta) && list(s.profesores).includes(id))
-    .map((s) => ({ ...s, profesores: id }));
+    .filter((s) => visible.has(s.oferta) && (coordinated.has(s.oferta) || list(s.profesores).includes(id)))
+    .map((s) => coordinated.has(s.oferta) ? s : ({ ...s, profesores: id }));
   copy.ufs = copy.ufs.filter((u) => copy.ofertas.some((o) => o.uf === u.id));
   copy.sobrecargas = copy.sobrecargas.filter((s) => s.profesor === id);
   copy.admins = [];

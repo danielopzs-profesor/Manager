@@ -58,6 +58,11 @@ test("acceso docente por contraseña sin enlace, aislamiento, restablecimiento y
     assert.equal(set.status, 200, await set.text());
     a = await (await req("/academic", null, ac)).json();
     assert.equal(a.profesores[0].hasPassword, true);
+    const original=a.profesores[0];
+    const denied=await req("/academic/save",{revision:a.revision,collection:"profesores",item:{...original,nomina:"L99999999"}},ac);
+    assert.equal(denied.status,400);
+    const unchanged=await (await req("/academic",null,ac)).json();
+    assert.equal(unchanged.profesores[0].nomina,original.nomina);
     assert.equal(JSON.stringify(a).includes("passwordHash"), false);
     assert.equal(
       (
@@ -70,7 +75,7 @@ test("acceso docente por contraseña sin enlace, aislamiento, restablecimiento y
     );
     assert.equal((await req("/login", {
       identifier: "L001", password: "professor-password-123",
-    })).status, 401, "La nómina no permite iniciar sesión");
+    })).status, 200, "La nómina es el usuario del profesor");
     const teacher = await req("/login", {
       identifier: "  MARIANA@EXAMPLE.EDU  ",
       password: "professor-password-123",

@@ -82,6 +82,7 @@ export function Icon({ name = "grid", size = 20 }) {
 export const navIcons = {
   Salones: "grid",
   Préstamos: "users",
+  Coordinación: "calendar",
   "Mi carga académica": "calendar",
   Inicio: "grid",
   Profesores: "users",
@@ -137,4 +138,13 @@ export function SemesterIllustration() {
       </div>
     </div>
   );
+}
+
+// Google Material Icons (filled), Apache-2.0. See docs/licenses/MaterialIcons.txt.
+export function FilledIcon({name,size=24}) {
+ const paths={download:'M19 9h-4V3H9v6H5l7 7 7-7zM5 18v3h14v-3H5z',add:'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',edit:'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a.996.996 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',share:'M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11A3 3 0 1015 5c0 .24.04.47.09.7L8.04 9.81a3 3 0 100 4.38l7.12 4.16a2.9 2.9 0 00-.08.65A2.92 2.92 0 1018 16.08z',delete:'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z'};
+ return <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true"><path d={paths[name]||paths.add}/></svg>;
+}
+export function IconAction({icon,label,tooltip=label,onClick,disabled=false,danger=false}) {
+ return <button type="button" className={'professor-icon-button'+(icon==='add'?' professor-icon-button--add':'')} title={tooltip} aria-label={label} onClick={onClick} disabled={disabled}><FilledIcon name={icon}/></button>;
 }

@@ -1,3 +1,5 @@
+import roomCodes from "../shared/room-codes.json";
+import {downloadCard} from "./downloads.js";
 import { SemesterDatePicker, TimeRangePicker, explainError } from "./date-time.jsx";
 import { acceptanceMetrics, roomUtilization } from "../shared/metrics.js";
 import React, { useEffect, useState } from "react";
@@ -6,7 +8,7 @@ import "@fontsource-variable/manrope";
 import "@fontsource-variable/sora";
 import "./style.css";
 import "./theme.css";
-import { Brand, Icon, SemesterIllustration, navIcons } from "./visual.jsx";
+import { Brand, Icon, IconAction, SemesterIllustration, navIcons } from "./visual.jsx";
 const segments = ["P1", "I1", "P2", "I2", "P3"];
 const labels = {
   P1: "Periodo 1",
@@ -98,6 +100,7 @@ function App() {
     [status, setStatus] = useState(""),
     [acceptance, setAcceptance] = useState(""),
     [type, setType] = useState(""),
+    [historyCategory, setHistoryCategory] = useState(""),
     [roomFilter, setRoomFilter] = useState(""),
     [segment, setSegment] = useState("P1"),
     [view, setView] = useState("Semana"),
@@ -145,13 +148,13 @@ function App() {
     };
   }, []);
   useEffect(() => {
-    if (me?.role) run(() => refresh());
-  }, [me?.role, sem]);
+    if (me?.role && !me.mustChangePassword) run(() => refresh());
+  }, [me?.role, me?.mustChangePassword, sem]);
   useEffect(() => {
-    if (!me?.role || modal) return;
+    if (!me?.role || me.mustChangePassword || modal) return;
     const id = setInterval(() => refresh().catch(() => {}), 30000);
     return () => clearInterval(id);
-  }, [me?.role, sem, modal]);
+  }, [me?.role, me?.mustChangePassword, sem, modal]);
   useEffect(() => {
     if (!modal) return;
     const key = (e) => {
@@ -187,12 +190,15 @@ function App() {
     return () => window.removeEventListener("keydown", key);
   }, [modal, busy]);
   useEffect(() => {
-    if (tab === "Datos" && me?.role === "admin")
+    if (tab === "Datos" && ["admin","superadmin"].includes(me?.role))
       api("/academic/backups")
         .then(setBackups)
         .catch((e) => setError(e.message));
   }, [tab, db?.revision]);
-  const admin = me?.role === "admin";
+  const admin = ["admin","superadmin"].includes(me?.role);
+  const superAdmin = me?.role === "superadmin";
+  const coordinatedIds = db?.ofertasCoordinadas || [];
+  const canManageOffer = o => admin || (tab === "Coordinación" && coordinatedIds.includes(o.id));
   const readAll = admin || me?.role === "consulta";
   const find = (collection, id) => db?.[collection]?.find((x) => x.id === id);
   const u = (o) => find("ufs", o.uf);
@@ -253,7 +259,7 @@ function App() {
       ]
     : me?.role === "consulta"
       ? ["Inicio", "Profesores", "Unidades de formación", "Ofertas", "Salones"]
-      : ["Inicio", "Mi horario", "Mis respuestas"];
+      : ["Inicio", "Mi horario", "Mis respuestas", ...(coordinatedIds.length ? ["Coordinación"] : [])];
   const changeTab = (t) => {
     setTab(t);
     setDetail("");
@@ -311,17 +317,18 @@ function App() {
             className="secondary"
             onClick={() => {
               setDetail(o.id);
-              setTab(readAll ? "Ofertas" : "Mis respuestas");
+              setTab(tab === "Coordinación" ? "Coordinación" : readAll ? "Ofertas" : "Mis respuestas");
             }}
           >
             Ver asignación →
           </button>
-          {admin && (
+          {canManageOffer(o) && (
             <>
               <button className="secondary" onClick={() => open("participaciones", { oferta: o.id })}>
                 Asignar profesor
               </button>
-              <button className="plain" onClick={() => open("ofertas", o)}>Editar</button>
+              {admin && <button className="plain" onClick={() => open("ofertas", o)}>Editar</button>}
+              {admin && <button className="secondary" onClick={()=>downloadCard(u(o)?.nombre||"Asignación",["Grupo "+o.grupo+" · Clave "+o.clave,o.periodos+" · "+o.duracion+" semanas · "+o.udc+" UDC",...ps.map(p=>(find("profesores",p.profesor)?.nombre||p.profesor)+" · "+p.porcentaje+" %")])}>Descargar ficha JPEG</button>}
             </>
           )}
         </div>
@@ -329,7 +336,7 @@ function App() {
     );
   }
   function offerDetail(o) {
-    const ps = db.participaciones.filter((p) => p.oferta === o.id);
+    const ps = db.participaciones.filter((p) => p.oferta === o.id && (readAll || tab === "Coordinación" || p.profesor === myProfessor));
     const coord = db.coordinaciones.find((c) => c.oferta === o.id);
     const issues = db.avisos.find((x) => x.oferta === o.id)?.errores || [];
     return (
@@ -384,7 +391,7 @@ function App() {
         )}
         <div className="section-heading">
           <h3>Responsabilidad docente</h3>
-          {admin && (
+          {canManageOffer(o) && (
             <button
               className="secondary"
               onClick={() => open("participaciones", { oferta: o.id })}
@@ -406,8 +413,8 @@ function App() {
                 {p.comentarios && <blockquote>{p.comentarios}</blockquote>}
               </div>
               <div className="buttons">
-                {(admin || me.role === "profesor") &&
-                  (admin ? (
+                {(canManageOffer(o) || p.profesor === myProfessor) &&
+                  (canManageOffer(o) ? (
                     <>
                       <button
                         className="secondary"
@@ -559,7 +566,7 @@ function App() {
         </div>
         <h3>{p.nombre}</h3>
         <p>
-          {p.id} · {p.correo}
+          {p.nomina || p.id} · {p.correo}
         </p>
         <div className="load">
           <strong>{fmt(w.total)}</strong>
@@ -620,52 +627,17 @@ function App() {
           </p>
         )}
         {admin && (
-          <div className="buttons">
-            <button className="secondary" onClick={() => {
-              const account = db.admins.find((a) => a.profesor === p.id) || db.admins.find((a) => a.id.toLowerCase() === p.correo.toLowerCase());
-              setModal({ kind: "admin", item: account, profesor: p.id, suggestedId: p.correo, suggestedNombre: p.nombre, revision: db.revision });
-            }}>Cuenta administrativa</button>
-            <button onClick={() => open("participaciones", { profesor: p.id })}>
-              Asignar unidad de formación
-            </button>
-            <button className="secondary" onClick={() => open("profesores", p)}>
-              Editar
-            </button>
-            <button
-              className="secondary"
-              onClick={() =>
-                setModal({
-                  kind: "professorPassword",
-                  profesor: p.id,
-                  revision: db.revision,
-                })
-              }
-            >
-              {p.hasPassword ? "Restablecer contraseña" : "Configurar acceso"}
-            </button>
-            <button
-              className="secondary"
-              disabled={busy}
-              onClick={() => notify(p)}
-            >
-              Compartir oferta
-            </button>
-            {w.estado === "Sobrecarga pendiente" && p.id !== myProfessor && (
-              <button
-                onClick={() =>
-                  setModal({
-                    kind: "approve",
-                    profesor: p.id,
-                    revision: db.revision,
-                  })
-                }
-              >
-                Aprobar sobrecarga
-              </button>
-            )}
-            <button className="plain" onClick={() => remove("profesores", p)}>
-              Eliminar
-            </button>
+          <div className="professor-controls">
+            <div className="professor-icon-actions" role="group" aria-label={`Acciones de ${p.nombre}`}>
+              <IconAction icon="add" label="Asignar unidad de formación" onClick={()=>open("participaciones",{profesor:p.id})}/>
+              <IconAction icon="download" label="Descargar ficha JPEG" onClick={()=>downloadCard(p.nombre,[p.correo,"Contrato: "+p.tipo,...(p.area?["Área de origen: "+p.area]:[]),"Carga total: "+fmt(w.total)+" UDC","Disponible: "+fmt(w.disponible)+" UDC",...assigned.map(o=>(u(o)?.nombre||o.uf)+" · Grupo "+o.grupo)])}/>
+              <IconAction icon="edit" label="Editar" onClick={()=>open("profesores",p)}/>
+              <IconAction icon="share" label="Compartir oferta" disabled={busy} onClick={()=>notify(p)}/>
+              <IconAction icon="delete" label="Eliminar" danger disabled={p.protectedAccess || db.admins.some(a=>a.profesor===p.id && a.role==="superadmin")} tooltip={p.protectedAccess?"Este perfil de superadministrador está protegido":"Eliminar profesor"} onClick={()=>remove("profesores",p)}/>
+            </div>
+            <button className="secondary professor-password" onClick={()=>setModal({kind:"professorPassword",profesor:p.id,revision:db.revision})}>{p.hasPassword?"Restablecer contraseña":"Configurar acceso"}</button>
+            {w.estado === "Sobrecarga pendiente" && p.id !== myProfessor && <button onClick={()=>setModal({kind:"approve",profesor:p.id,revision:db.revision})}>Aprobar sobrecarga</button>}
+            {superAdmin && (()=>{const account=db.admins.find(a=>a.profesor===p.id||a.id===p.correo.toLowerCase());return <label className="role-check professor-role-check"><input type="checkbox" checked={["admin","superadmin"].includes(account?.role || p.accessRole)} disabled={busy||p.protectedAccess||account?.protegido||account?.role==="superadmin"} onChange={e=>run(()=>act("/academic/professor-role",{profesor:p.id,enabled:e.target.checked}))}/>Administrador{account?.role==="superadmin"||p.protectedAccess?" (superadministrador permanente)":""}</label>})()}
           </div>
         )}
       </article>
@@ -730,7 +702,7 @@ function App() {
                         key={s.id}
                         onClick={() => {
                           setDetail(o.id);
-                          setTab(readAll ? "Ofertas" : "Mis respuestas");
+                          setTab(tab === "Coordinación" ? "Coordinación" : readAll ? "Ofertas" : "Mis respuestas");
                         }}
                       >
                         <span>{s.horario}</span>
@@ -881,6 +853,18 @@ function App() {
             </form>
           </div>
         </main>
+      ) : me.mustChangePassword ? (
+        <div className="overlay"><section className="modal" role="dialog" aria-modal="true" aria-labelledby="initial-password-title" onKeyDown={e=>{if(e.key!=="Tab")return;const nodes=[...e.currentTarget.querySelectorAll("input,button:not(:disabled)")],first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}}>
+          <h2 id="initial-password-title">Elige tu contraseña personal</h2>
+          <p>Estás usando una contraseña temporal. Debes cambiarla antes de consultar tus clases.</p>
+          <form onSubmit={e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.currentTarget));run(async()=>{await api("/password",values);setMe(await api("/me"));setNotice("Tu contraseña personal quedó guardada.");});}}>
+            <label>Nueva contraseña<input name="password" type="password" minLength={12} maxLength={200} required autoComplete="new-password" autoFocus/></label>
+            <label>Confirmar contraseña<input name="confirmation" type="password" minLength={12} maxLength={200} required autoComplete="new-password"/></label>
+            <p className="muted">Usa de 12 a 200 caracteres y una contraseña diferente de la temporal.</p>
+            {error && <p className="alert error" role="alert">{error}</p>}
+            <button disabled={busy||!online}>{busy?"Guardando…":"Guardar mi contraseña"}</button>
+          </form>
+        </section></div>
       ) : (
         <div className="app-shell">
           <nav className="sidebar" aria-label="Navegación principal">
@@ -987,6 +971,7 @@ function App() {
                     )}
                   </div>
                 </div>
+                {admin && config.accessPolicyActive === false && <div className="alert">La política de identidades de web-deploy aún no está activada en este entorno. Activa ENFORCE_NAMED_ROLES=1 o usa el arranque start:web para aplicar la lista verificada.</div>}
                 {tab === "Inicio" && (
                   <>
                     <div className="stats">
@@ -1045,7 +1030,7 @@ function App() {
                         <div className="buttons"><button onClick={()=>{changeTab("Profesores");setAcceptance("Carga aceptada");}}>Ver cargas aceptadas</button><button className="secondary" onClick={()=>{changeTab("Profesores");setAcceptance("Carga pendiente");}}>Ver pendientes ({acceptanceSummary.pending.length})</button></div>
                       </section>
                       <section className="panel"><h2>Distribución de profesores</h2>
-                        {["Cátedra","Planta","Por clasificar"].map(t=>{const n=db.profesores.filter(p=>p.tipo===t).length,pct=db.profesores.length?Math.round(n/db.profesores.length*100):0;return <button className="metric-row" key={t} onClick={()=>{changeTab("Profesores");setType(t);}}><span>{t === "Por clasificar" ? "No definido" : t} · {n} ({pct}%)</span><progress max="100" value={pct}/><span>Revisar →</span></button>})}
+                        {["Cátedra","Planta","Cátedra interna","Préstamo","Por clasificar"].map(t=>{const n=db.profesores.filter(p=>p.tipo===t).length,pct=db.profesores.length?Math.round(n/db.profesores.length*100):0;return <button className="metric-row" key={t} onClick={()=>{changeTab("Profesores");setType(t);}}><span>{t === "Por clasificar" ? "No definido" : t} · {n} ({pct}%)</span><progress max="100" value={pct}/><span>Revisar →</span></button>})}
                       </section>
                       <section className="panel"><h2>Disponibilidad de salones</h2>
                         <label>Periodo<select aria-label="Periodo de disponibilidad" value={segment} onChange={e=>setSegment(e.target.value)}>{segments.map(s=><option key={s} value={s}>{labels[s]}</option>)}</select></label>
@@ -1120,7 +1105,7 @@ function App() {
                         onChange={(e) => setType(e.target.value)}
                       >
                         <option value="">Todos los tipos</option>
-                        {["Cátedra", "Planta", "Por clasificar"].map((t) => (
+                        {["Cátedra", "Planta", "Cátedra interna", "Préstamo", "Por clasificar"].map((t) => (
                           <option key={t}>{t}</option>
                         ))}
                       </select>
@@ -1161,7 +1146,7 @@ function App() {
                       {db.profesores
                         .filter(
                           (p) =>
-                            (p.nombre + " " + p.id)
+                            (p.nombre + " " + (p.nomina||p.id))
                               .toLowerCase()
                               .includes(query.toLowerCase()) &&
                             (!type || p.tipo === type) &&
@@ -1205,7 +1190,7 @@ function App() {
                         .map((u) => (
                           <article className="panel" key={u.id}>
                             <Badge value={u.tipo} />
-                            <h3>{u.nombre}</h3>
+                            <h3>{u.nombre}</h3>{admin && <button className="secondary" onClick={()=>downloadCard(u.nombre,["Clave UF: "+u.id,"Tipo: "+u.tipo,"UDC base: "+u.udc])}>Descargar ficha JPEG</button>}
                             <p>
                               {u.id} · {fmt(u.udc)} UDC base
                             </p>
@@ -1230,7 +1215,7 @@ function App() {
                     </div>
                   </>
                 )}
-                {["Ofertas", "Mis respuestas"].includes(tab) && (
+                {["Ofertas", "Mis respuestas", "Coordinación"].includes(tab) && (
                   <>
                     {detail && find("ofertas", detail) ? (
                       offerDetail(find("ofertas", detail))
@@ -1299,7 +1284,7 @@ function App() {
                           </div>
                         )}
                         <div className="cards">
-                          {filteredOffers.map(offerCard)}
+                          {filteredOffers.filter(o=>tab!=="Coordinación"||coordinatedIds.includes(o.id)).map(offerCard)}
                         </div>
                         {!filteredOffers.length && (
                           <p className="empty">
@@ -1429,15 +1414,15 @@ function App() {
                         + Usuario
                       </button>
                     </div>
+                    <button className="secondary" onClick={()=>setModal({kind:"temporaryPasswords",revision:db.revision})}>Activar contraseñas temporales de prueba</button>
+                    <p className="muted">Permite que los profesores elijan su contraseña al ingresar. Las cuentas administrativas y de superadministrador conservan su acceso.</p>
                     {db.admins.map((a) => (
                       <div className="record" key={a.id}>
                         <div>
                           <b>{a.nombre}</b>
                           <p>
                             {a.id} ·{" "}
-                            {(a.role || "admin") === "consulta"
-                              ? "Consulta · Solo lectura"
-                              : "Administrador"}
+                            {({superadmin:"Superadministrador",admin:"Administrador",profesor:"Profesor",consulta:"Consulta · Solo lectura"})[a.role||"consulta"]}
                             {a.profesor && ` · Docente: ${find("profesores", a.profesor)?.nombre || a.profesor}`}
                           </p>
                         </div>
@@ -1473,14 +1458,18 @@ function App() {
                 )}
                 {tab === "Historial" && (
                   <section className="panel">
-                    <h2>Registro de cambios</h2>
-                    {db.auditoria
+                    <h2>Historial de la plataforma</h2>
+                    <div className="toolbar"><select aria-label="Categoría de historial" value={historyCategory} onChange={e=>setHistoryCategory(e.target.value)}><option value="">Todas las categorías</option>{["accesos","errores","cambios","respuestas","aprobaciones","datos","seguridad"].map(c=><option key={c}>{c}</option>)}</select>
+                    <a className="button secondary" href={"/api/academic/history.txt?categoria="+historyCategory}>Descargar TXT</a>
+                    <button className="danger" onClick={()=>setModal({kind:"clearHistory",revision:db.revision,categoria:historyCategory})}>Borrar historial</button></div>
+                    <p>Hasta 10 000 eventos recientes. La limpieza conserva un registro de quién la realizó; los respaldos previos pueden contener eventos anteriores.</p>
+                    {db.auditoria.filter(a=>!historyCategory||(a.categoria||"cambios")===historyCategory)
                       .slice()
                       .reverse()
                       .map((a) => (
                         <div className="record" key={a.id}>
                           <div>
-                            <b>{a.accion}</b>
+                            <b>{a.accion}</b> <Badge value={a.categoria||"cambios"}/>
                             <p>{a.detalle}</p>
                             <small>
                               {a.actor} ·{" "}
@@ -1509,15 +1498,17 @@ function App() {
                       para importar y exportar; no sincroniza archivos de tu
                       computadora.
                     </p>
+                    <p className="muted">El formato de entrega incluye ofertas publicadas y en borrador del semestre seleccionado. Los datos faltantes quedan en blanco; descargar no publica ni confirma las ofertas.</p>
                     <div className="buttons bulk">
                       <a className="button" href="/api/academic/export">
                         Descargar Excel / plantilla
                       </a>
+                      <button className="secondary" disabled={busy} onClick={()=>run(async()=>{const response=await fetch("/api/academic/delivery.xlsx?semestre="+encodeURIComponent(sem));if(!response.ok){const result=await response.json();throw Error(result.error||"No se pudo generar el formato de entrega.");}const url=URL.createObjectURL(await response.blob()),link=document.createElement("a");link.href=url;link.download="Formato_Entrega.xlsx";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);})}>Descargar formato de entrega</button>
                       <a
                         className="button secondary"
-                        href="/api/academic/backup"
+                        href={"/api/academic/report.pdf?semestre="+encodeURIComponent(sem)}
                       >
-                        Exportar respaldo JSON
+                        Descargar reporte PDF
                       </a>
                       <label className="button secondary">
                         Importar Excel
@@ -1603,6 +1594,8 @@ function App() {
                       admin: "Cuenta de acceso",
                       adminDelete: "Eliminar administrador",
                       import: "Reemplazar programación",
+                      temporaryPasswords:"Contraseñas temporales de prueba",
+                      clearHistory: "Borrar historial",
                       restore: "Restaurar respaldo",
                     }[modal.kind]}
               </h2>
@@ -1624,6 +1617,7 @@ function App() {
               <Editor
                 modal={modal}
                 semestre={sem}
+                allowedOfferIds={admin ? null : coordinatedIds}
                 db={db}
                 busy={busy || !online}
                 onSave={(item) =>
@@ -1657,6 +1651,8 @@ function App() {
                   e.preventDefault();
                   const values = Object.fromEntries(new FormData(e.target));
                   run(async () => {
+                    if (modal.kind === "temporaryPasswords") await act("/academic/temporary-passwords",{confirmacion:values.confirmacion},modal.revision);
+                    if (modal.kind === "clearHistory") await act("/academic/history/clear",{categoria:modal.categoria,confirmacion:values.confirmacion},modal.revision);
                     if (modal.kind === "approve")
                       await act(
                         "/academic/approve",
@@ -1719,6 +1715,8 @@ function App() {
                   });
                 }}
               >
+                {modal.kind === "temporaryPasswords" && <><p>Se reemplazarán las contraseñas de los profesores por <b>temporal123</b> y se cerrarán sus sesiones anteriores. Deberán elegir una contraseña personal antes de consultar datos. Los perfiles administrativos y superadministradores se excluyen.</p><label>Escribe ACTIVAR PRUEBA<input name="confirmacion" required autoComplete="off"/></label></>}
+                {modal.kind === "clearHistory" && <label>Descarga antes el TXT. Escribe BORRAR HISTORIAL para eliminar {modal.categoria||"todas las categorías"}.<input name="confirmacion" required autoComplete="off"/></label>}
                 {modal.kind === "approve" && (
                   <label>
                     Justificación obligatoria
@@ -1767,7 +1765,7 @@ function App() {
                 {modal.kind === "professorPassword" && (
                   <>
                     <p>
-                      Usuario: <b>{find("profesores", modal.profesor)?.correo}</b>. Comparte la contraseña personalmente; no
+                      Usuario (nómina): <b>{find("profesores", modal.profesor)?.nomina || modal.profesor}</b>. Comparte la contraseña personalmente; no
                       aparecerá en exportaciones ni en el historial.
                     </p>
                     <label>
@@ -1789,6 +1787,7 @@ function App() {
                 )}
                 {modal.kind === "admin" && (
                   <>
+                    {modal.item && <input type="hidden" name="combinar" value="1"/>}
                     <label>
                       Usuario
                       <input
@@ -1806,13 +1805,19 @@ function App() {
                         defaultValue={modal.item?.nombre || modal.suggestedNombre}
                       />
                     </label>
-                    <label>
+                    <label htmlFor="account-role">
                       Rol
+                      {modal.item?.role === "superadmin" && <input type="hidden" name="role" value="superadmin"/>}
                       <select
-                        name="role"
-                        defaultValue={modal.item?.role || "admin"}
+                        id="account-role"
+                        aria-label="Rol"
+                        name={modal.item?.role === "superadmin" ? undefined : "role"}
+                        disabled={modal.item?.role === "superadmin"}
+                        defaultValue={modal.item?.role || "consulta"}
                       >
-                        <option value="admin">
+                        <option value="superadmin" disabled>Superadministrador permanente</option>
+                        <option value="profesor">Profesor</option>
+                        <option value="admin" disabled={!superAdmin && !!db.admins.length}>
                           Administrador · gestión completa
                         </option>
                         <option value="consulta">
@@ -1821,12 +1826,14 @@ function App() {
                       </select>
                     </label>
                     <label>
-                      Profesor vinculado (opcional, solo administradores)
+                      Combinar con perfil de profesor (opcional)
                       <select name="profesor" defaultValue={modal.item?.profesor || modal.profesor || ""}>
                         <option value="">Sin vinculación docente</option>
                         {db.profesores.map((p) => <option key={p.id} value={p.id}>{p.nombre} · {p.id}</option>)}
                       </select>
                     </label>
+                    {modal.item?.role === "superadmin" && <p className="muted">La vinculación docente conserva tu rol y todos tus permisos de superadministrador. Solo tú puedes editar esta cuenta.</p>}
+                    <p className="muted">Selecciona el profesor que corresponde a esta cuenta. Se reutilizan su perfil y asignaciones, sin crear otro docente. La cuenta administrativa conserva su contraseña; también podrá entrar con el correo del perfil vinculado.</p>
                     <label>
                       Contraseña{" "}
                       {modal.item ? "(vacía para conservar la actual)" : ""}
@@ -1879,23 +1886,24 @@ function App() {
     </>
   );
 }
-function Editor({ modal, db, semestre, busy, onSave }) {
+function Editor({ modal, db, semestre, allowedOfferIds, busy, onSave }) {
   const { collection, item } = modal;
   const [values, setValues] = useState({ ...item });
   const [formError,setFormError] = useState("");
-  const change = (key, v) => setValues((x) => ({ ...x, [key]: v }));
+  const partial = ["ofertas","sesiones"].includes(collection);
+  const change = (key, v) => setValues((x) => ({ ...x, [key]: v, ...(collection === "ofertas" && ["duracion","modalidad"].includes(key) ? {periodos:"",...(key === "modalidad" ? {duracion:v === "Intensiva" ? 1 : 5} : {})} : {}) }));
   const field = (
     key,
     label,
     {
       type = "text",
       options,
-      required = true,
+      required = !partial || ["oferta","uf","semestre"].includes(key),
       readOnly = false,
       hint,
       defaultValue = "",
     } = {},
-  ) => key === "horario" ? <TimeRangePicker key={key} label={label} value={values[key] || ""} onChange={(v)=>change(key,v)}/> : (
+  ) => key === "horario" ? <TimeRangePicker key={key} label={label} required={!partial} value={values[key] || ""} onChange={(v)=>change(key,v)}/> : (
     <label key={key}>
       {label}
       {options ? (
@@ -1921,7 +1929,7 @@ function Editor({ modal, db, semestre, busy, onSave }) {
           required={required}
           readOnly={readOnly}
           type={type}
-          min={type === "number" ? (key === "capacidad" ? 1 : key === "porcentaje" || (key === "udc" && collection === "prestamos") ? 0.01 : 0) : undefined}
+          min={type === "number" ? (key === "capacidad" ? 1 : ["porcentaje","udc_maximas"].includes(key) || (key === "udc" && collection === "prestamos") ? 0.01 : 0) : undefined}
           step={type === "number" ? (["capacidad","alumnos"].includes(key) ? "1" : "0.01") : undefined}
           max={key === "porcentaje" ? 100 : undefined}
           value={values[key] ?? defaultValue}
@@ -1943,7 +1951,7 @@ function Editor({ modal, db, semestre, busy, onSave }) {
   const remaining = Math.max(0, 100 - participants
     .filter((p) => p.id !== item.id)
     .reduce((sum, p) => sum + Number(p.porcentaje), 0));
-  const assignmentOffers = db.ofertas.filter((o) => o.semestre === semestre || o.id === values.oferta);
+  const assignmentOffers = db.ofertas.filter((o) => (o.semestre === semestre || o.id === values.oferta) && (!allowedOfferIds || allowedOfferIds.includes(o.id)));
   const multi = (key, label, opts) => (
     <fieldset>
       <legend>{label}</legend>
@@ -1975,10 +1983,12 @@ function Editor({ modal, db, semestre, busy, onSave }) {
         e.preventDefault();
         setFormError("");
         if (collection === "semestres" && !values.inicio) { setFormError("Elige un lunes en el calendario para definir el inicio del semestre."); return; }
-        if (values.horario && values.horario.slice(0,5) >= values.horario.slice(6)) { setFormError("La hora de fin debe ser posterior al inicio. Corrige el horario antes de guardar."); return; }
+        if (!partial && values.horario && values.horario.slice(0,5) >= values.horario.slice(6)) { setFormError("La hora de fin debe ser posterior al inicio. Corrige el horario antes de guardar."); return; }
         const defaults = {};
         if (collection === "profesores") defaults.tipo = "Cátedra";
+        if (collection === "semestres") {defaults.escuela="AD-Arquitectura, Arte y Diseño";defaults.identificador=item.id==="FJ27"?"202711":"";}
         if (collection === "ufs") {
+          defaults.atributos = "PMT3";
           defaults.tipo = "Materia";
           defaults.udc = 0;
         }
@@ -1993,8 +2003,10 @@ function Editor({ modal, db, semestre, busy, onSave }) {
         onSave({ ...defaults, ...values, id: item.id || values.id });
       }}
     >
+      {partial && <p className="alert">Puedes guardar datos parciales como borrador. Completa y revisa las sesiones antes de publicar; no se borrarán al cambiar los periodos del grupo.</p>}
       {formError && <p className="alert error" role="alert">{formError}</p>}
-      {["profesores", "ufs", "semestres"].includes(collection) &&
+      {collection === "profesores" && field(item.id?"nomina":"id","Usuario",{readOnly:!!item.id,defaultValue:item.nomina||item.id||"",hint:"El usuario es la nómina del profesor y también se utiliza en el Excel. No se puede editar después de crear el perfil."})}
+      {["ufs", "semestres"].includes(collection) &&
         field(
           "id",
           collection === "profesores"
@@ -2010,14 +2022,17 @@ function Editor({ modal, db, semestre, busy, onSave }) {
         <>
           {field("correo", "Correo institucional", { type: "email" })}
           {field("tipo", "Tipo de contrato", {
-            options: ["Cátedra", "Planta"],
+            options: ["Cátedra", "Planta", "Cátedra interna", "Préstamo", "Por clasificar"],
             defaultValue: "Cátedra",
             hint: "Cátedra: 10 UDC. Planta: 14 UDC. Topes semestrales incluyendo coordinación.",
           })}
+          {values.tipo==="Préstamo" && field("area","Área de origen")}
+          {["Cátedra interna","Préstamo"].includes(values.tipo) && field("udc_maximas","Tope semestral de UDC",{type:"number",hint:"Indica el tope autorizado para este profesor. No se asume un valor por defecto."})}
         </>
       )}
       {collection === "ufs" && (
         <>
+          {field("atributos", "Atributos de la UF", {defaultValue:"PMT3",required:false,hint:"Puedes editar o agregar atributos separados por coma; ejemplo PMT3,INGL."})}
           {field("tipo", "Tipo de UF", {
             options: ["Materia", "Bloque"],
             defaultValue: "Materia",
@@ -2030,13 +2045,22 @@ function Editor({ modal, db, semestre, busy, onSave }) {
       )}
       {collection === "salones" && <>
         {field("edificio", "Edificio", { hint: "Ejemplo: CEDES o Aulas 6." })}
+        <label>Código de salón para entrega<input aria-label="Código de salón para entrega" list="official-room-codes" value={values.codigo||""} onChange={e=>change("codigo",e.target.value)}/><small>Conserva espacios y guiones: por ejemplo A-A6- 206. Puedes buscar en el catálogo de referencia o capturar un código oficial actualizado.</small></label>
+        <datalist id="official-room-codes">{roomCodes.map(r=><option key={r.codigo} value={r.codigo}>{r.descripcion}</option>)}</datalist>
+        {values.codigo && !roomCodes.some(r=>r.codigo===values.codigo) && <p className="muted">Este código no aparece en el catálogo de referencia. Verifícalo con Escolar; el catálogo puede no incluir salones nuevos.</p>}
         {field("numero", "Número de salón", { hint: "Ejemplo: 319 o 206; también admite letras." })}
         <p>Salón: <b>{values.edificio || "Edificio"}-{values.numero || "Número"}</b>. Su referencia interna se conserva al editar.</p>
         {field("capacidad", "Capacidad de alumnos", { type: "number", hint: "Número entero mayor a cero." })}
         {multi("dias", "Días de trabajo", days)}
         {field("horario", "Horario de trabajo", { hint: "Formato de 24 horas: 07:00-22:00. Un rango por día seleccionado." })}
       </>}
-      {collection === "semestres" && <SemesterDatePicker value={values.inicio || ""} onChange={(v)=>change("inicio",v)}/>}
+      {collection === "semestres" && <>
+        {field("identificador","Identificador del periodo para entrega",{defaultValue:item.id==="FJ27"?"202711":"",required:false,hint:"Manual: FJ 2027 = 202711; AD 2027 = 202713. Verifica cuál corresponde antes de entregar; no cambia la clave interna del semestre."})}
+        {field("escuela","Escuela TEC",{defaultValue:"AD-Arquitectura, Arte y Diseño",required:false})}
+        <SemesterDatePicker value={values.inicio || ""} onChange={(v)=>change("inicio",v)}/>
+        <p>Fechas de los periodos para calendario y formato de entrega. Si dejas un campo vacío se calcula desde el inicio del semestre; las fechas capturadas tienen prioridad.</p>
+        {segments.map((id,i)=>{const date=(suffix)=>{if(values[id+"_"+suffix])return values[id+"_"+suffix];if(!values.inicio)return "";const d=new Date(values.inicio+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+[0,35,42,77,84][i]+(suffix==="fin"?([1,3].includes(i)?4:34):0));return d.toISOString().slice(0,10);};return <fieldset key={id}><legend>{labels[id]}</legend><div className="time-fields">{["inicio","fin"].map(suffix=><label key={suffix}>{suffix==="inicio"?"Fecha inicio":"Fecha fin"} · {id}<input type="date" value={date(suffix)} onChange={e=>change(id+"_"+suffix,e.target.value)}/></label>)}</div></fieldset>})}
+      </>}
       {collection === "prestamos" && <>
         {field("profesor","Profesor",{options:options("profesores")})}
         {field("semestre","Semestre",{options:options("semestres")})}

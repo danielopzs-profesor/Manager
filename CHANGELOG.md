@@ -1,3 +1,65 @@
+## 4.5.0 (desktop-app)
+
+- Rama independiente con aplicación Electron para Mac Intel y servidor local privado, manteniendo autenticación de producción.
+- Asistente de conexión Neon con configuración cifrada mediante el Llavero del sistema.
+- Actualización desde GitHub Releases con descarga e instalación consentidas; requiere firma en macOS.
+- Empaquetado DMG/ZIP y workflow de compilación macOS que prepara Releases en borrador.
+
+## 4.4.0 (web-deploy)
+
+- Activación explícita de contraseñas temporales docentes de prueba, con cambio obligatorio en el primer acceso.
+- Formulario emergente con confirmación y bloqueo de API hasta elegir contraseña personal; las contraseñas nuevas requieren 12–200 caracteres.
+- Exclusión de cuentas administrativas y protegidas; importaciones y restauraciones conservan el estado de cambio obligatorio.
+
+## 4.3.0 (web-deploy)
+
+- Usuario docente unificado con nómina: un solo campo bloqueado al editar y usado en el acceso y Excel.
+- Compatibilidad con perfiles anteriores sin renombrar referencias ni perder asignaciones; importación y restauración conservan el usuario existente.
+- Las cuentas vinculadas admiten acceso por nómina con su rol y contraseña administrativa; restablecimiento sincronizado y protección del superadministrador.
+
+## 4.2.3 (web-deploy)
+
+- El formato de entrega permite datos incompletos y deja celdas vacías, sin omitir ofertas ni docentes pendientes de sesión.
+- Exporta horas parciales por separado y conserva estados, asignaciones y confirmaciones.
+
+## 4.2.2 (web-deploy)
+
+- El formato de entrega incluye ofertas en borrador y publicadas del semestre seleccionado.
+- Validación de datos de entrega independiente de publicación, coordinación y aprobación de sobrecarga; la descarga no modifica estados ni respuestas.
+
+## 4.2.1 (web-deploy)
+
+- Compatibilidad con ManualCargaMasiva: sede MTY, fechas yyyy-mm-dd, horas como texto y orden institucional de restricciones.
+- Atributos separados por comas sin espacios, validación de separadores del código de salón y sugerencias de 307 códigos individuales de referencia.
+- Corrección confirmada de FJ27 a 202711 al arrancar, con migración única e historial; AD27 conserva 202713.
+
+## 4.2.0 (web-deploy)
+
+- Formato de entrega XLSX con las 29 columnas institucionales, filas por profesor/sesión/periodo y validaciones previas.
+- Nómina independiente del acceso, atributos UF (PMT3 inicial), código oficial de salón e identificador institucional de periodo (202713 inicial para FJ27).
+- Fechas de inicio y fin editables por periodo ordinario o intensivo, compartidas por calendario, contratos y exportación; respaldo Excel conserva nuevos campos y admite plantillas anteriores.
+- Add primero y azul; resto de iconos grises, manteniendo separación y etiquetas accesibles.
+
+## 4.1.1 (web-deploy)
+
+- El formulario conserva el rol protegido al vincular un superadministrador con un profesor existente; mantiene permisos, asignaciones y acceso a Mi carga académica.
+- Más separación entre iconos, contraseña y casilla administrativa; fila de acciones centrada y con ancho limitado.
+
+## 4.1.0 (web-deploy)
+
+- Edición de periodos conserva las sesiones como pendientes en borrador; mensajes específicos para corregirlas antes de publicar.
+- Guardado parcial de grupos y sesiones, sin retirar los controles de aforo, disponibilidad y empalmes confirmados.
+- Fichas docentes con iconos Material rellenos, etiquetas accesibles y casilla administrativa al pie.
+- Combinación explícita de cuenta administrativa con perfil docente existente, conservando asignaciones y contraseña administrativa.
+
+## 4.0.0 (web-deploy)
+
+- Rama de publicación independiente de main y arranque de producción para Hostinger con política nominativa verificada.
+- Superadministradores permanentes, retirada inicial de privilegios sobrantes, casilla de administración exclusiva del superadministrador y coordinación restringida a sus propios grupos.
+- Historial por categorías con accesos, errores, exportación TXT y limpieza confirmada; los eventos no generan respaldos de datos duplicados.
+- Cátedra interna y Préstamo recibido con tope individual y área de origen para préstamos recibidos; conserva préstamos hacia otras áreas.
+- Exportación XLSX, reporte PDF con gráficas y fichas JPEG de profesores, UF y asignaciones.
+
 ## 3.6.0
 
 - Salones por edificio y número, con identificación interna estable y validación de combinaciones duplicadas.
